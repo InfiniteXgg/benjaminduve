@@ -1,9 +1,13 @@
 <?php
 
-use App\Http\Controllers\LoginController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [LoginController::class, 'show'])->name('login.form');
-Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
-Route::get('/admin', [LoginController::class, 'adminView'])->name('view.admin');
-Route::get('/usuario', [LoginController::class, 'userView'])->name('view.user');
+Route::get('/', function () {
+    return redirect()->away((string) config('app.frontend_url', 'http://localhost:5173'));
+});
+
+Route::fallback(function () {
+    return response()->json([
+        'message' => 'Ruta web no disponible. Usa el frontend React en http://localhost:5173.',
+    ], 404);
+});

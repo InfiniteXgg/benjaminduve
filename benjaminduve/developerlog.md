@@ -6,3 +6,5 @@ Panel de BD (phpMyAdmin):
 (HTTP/1.1 200 OK)
 
 MySQL expuesto en localhost:3306
+
+Frontend react: http://localhost:5173
