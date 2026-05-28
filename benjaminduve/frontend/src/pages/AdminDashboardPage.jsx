@@ -21,7 +21,14 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState('products')
   const [notice, setNotice] = useState('')
-  const [summary, setSummary] = useState({ product_count: 0, active_product_count: 0, order_count: 0 })
+  const [summary, setSummary] = useState({
+    product_count: 0,
+    active_product_count: 0,
+    order_count: 0,
+    low_stock_threshold: 5,
+    low_stock_count: 0,
+    low_stock_products: [],
+  })
 
   const [products, setProducts] = useState([])
   const [productMeta, setProductMeta] = useState({})
@@ -108,14 +115,15 @@ export default function AdminDashboardPage() {
   }, [notice])
 
   useEffect(() => {
-    if (tab !== 'orders') return
-
     const pollId = window.setInterval(async () => {
       try {
-        await Promise.all([
-          loadOrders({ q: orderQ, dateFrom, dateTo, page: orderPage }),
-          loadSummary(),
-        ])
+        await loadSummary()
+        if (tab === 'orders') {
+          await loadOrders({ q: orderQ, dateFrom, dateTo, page: orderPage })
+        }
+        if (tab === 'products') {
+          await loadProducts({ q: productQ, page: productPage })
+        }
       } catch {
         // Mantener dashboard estable aunque falle un ciclo puntual.
       }
@@ -123,7 +131,7 @@ export default function AdminDashboardPage() {
 
     return () => window.clearInterval(pollId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, orderQ, dateFrom, dateTo, orderPage])
+  }, [tab, orderQ, dateFrom, dateTo, orderPage, productQ, productPage])
 
   useEffect(() => {
     if (!showCreateModal) return
@@ -228,7 +236,13 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="app-shell">
-      <AdminHeader tab={tab} onChangeTab={setTab} onLogout={onLogout} />
+      <AdminHeader
+        tab={tab}
+        onChangeTab={setTab}
+        onLogout={onLogout}
+        lowStockProducts={summary.low_stock_products || []}
+        lowStockThreshold={summary.low_stock_threshold || 5}
+      />
       <main className="container admin-layout">
         <NoticeBanner message={notice} />
         <section className="panel">
@@ -239,6 +253,7 @@ export default function AdminDashboardPage() {
             <div className="stat-box"><span>Pedidos</span><strong>{summary.order_count}</strong></div>
           </div>
         </section>
+
 
         {tab === 'products' ? (
           <section className="panel">
@@ -272,9 +287,17 @@ export default function AdminDashboardPage() {
             <div className="stack compact-stack">
               {editableProducts.map((product) => (
                 <article
-                  className={`row-card column product-editor ${removingProductSlug === product.slug ? 'is-removing' : ''}`}
+                  className={`row-card column product-editor ${removingProductSlug === product.slug ? 'is-removing' : ''} ${product.is_low_stock ? 'is-low-stock' : ''}`}
                   key={product.id}
                 >
+                  <div className="product-editor-head">
+                    <strong>{product.name}</strong>
+                    {product.is_low_stock && (
+                      <span className={`stock-badge ${product.stock_status === 'out_of_stock' ? 'is-critical' : ''}`}>
+                        {product.stock_status_label}
+                      </span>
+                    )}
+                  </div>
                   <div className="triple">
                     <input value={product.name} onChange={(e) => setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, name: e.target.value } : p))} />
                     <input value={product.slug} onChange={(e) => setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, slug: e.target.value } : p))} />

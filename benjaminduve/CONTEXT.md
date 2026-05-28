@@ -952,7 +952,8 @@ Este archivo se usa para registrar instrucciones del usuario y cambios clave imp
   - rontend/src/pages/PreCheckoutPage.jsx:
     - texto visible ajustado de checkout a compra.
   - rontend/src/context/CartContext.jsx:
-    - se agrega metodo estoreCart(rawItems) para restaurar carrito desde snapshot.
+    - se agrega metodo 
+estoreCart(rawItems) para restaurar carrito desde snapshot.
   - rontend/src/pages/OrderPage.jsx:
     - se elimina boton 'Volver al home'.
     - la boleta final solo se renderiza cuando can_print_receipt es true.
@@ -990,7 +991,8 @@ Este archivo se usa para registrar instrucciones del usuario y cambios clave imp
       - redirige automaticamente a /carrito.
     - cuando can_print_receipt es true (aceptado):
       - limpia snapshot temporal y datos de compra.
-      - asegura carrito vacio (estoreCart([])).
+      - asegura carrito vacio (
+estoreCart([])).
       - redirige automaticamente a /pedido/:id/resumen-final con token.
     - la boleta final deja de renderizarse en esta vista; aqui solo aparece mensaje de espera hasta aceptacion.
     - mantiene boton Pagar hacia pasarela placeholder y Cancelar pedido con restauracion de carrito.
@@ -1001,10 +1003,12 @@ Este archivo se usa para registrar instrucciones del usuario y cambios clave imp
   - rontend/src/App.jsx:
     - nueva ruta: /pedido/:orderId/resumen-final.
   - rontend/src/context/CartContext.jsx:
-    - se agrega estoreCart(rawItems) para restaurar o limpiar carrito de forma controlada.
+    - se agrega 
+estoreCart(rawItems) para restaurar o limpiar carrito de forma controlada.
 - Implementacion backend:
   - pp/Http/Controllers/Api/AdminApiController.php:
-    - al rechazar pedido (ejectOrder), ahora se restituye stock de cada item en transaccion y luego se marca el pedido como rechazado/cancelado.
+    - al rechazar pedido (
+ejectOrder), ahora se restituye stock de cada item en transaccion y luego se marca el pedido como rechazado/cancelado.
 - Resultado funcional:
   - rechazo => regreso al carrito con productos restaurados.
   - aceptacion => pantalla final de resumen con imprimir/home y carrito reseteado.
@@ -1080,7 +1084,8 @@ Este archivo se usa para registrar instrucciones del usuario y cambios clave imp
 - Solicitud del usuario: al aceptar pedido desde dashboard no ocurria nada y no aparecia boleta.
 - Ajustes aplicados:
   - pp/Http/Controllers/Api/AdminApiController.php:
-    - cceptOrder y ejectOrder ahora aceptan pedidos en payment_status prototype_submitted o prototype_pending (modo simulacion), evitando bloqueo de decision admin.
+    - cceptOrder y 
+ejectOrder ahora aceptan pedidos en payment_status prototype_submitted o prototype_pending (modo simulacion), evitando bloqueo de decision admin.
   - rontend/src/pages/OrderPage.jsx:
     - polling ampliado: ahora consulta estado mientras el pedido siga pending con revision pending, incluso si pago aun figura como prototype_pending.
   - rontend/src/pages/FinalOrderSummaryPage.jsx:
@@ -1132,7 +1137,8 @@ Este archivo se usa para registrar instrucciones del usuario y cambios clave imp
 - Acciones ejecutadas para recuperar estabilidad del frontend:
   - reinicio de contenedor rontend (docker compose restart frontend).
   - recreacion de servicios para limpiar estado transitorio (docker compose up -d --build frontend + restart de frontend).
-  - limpieza de cache interna de Vite (m -rf frontend/node_modules/.vite) y reinicio de frontend.
+  - limpieza de cache interna de Vite (
+m -rf frontend/node_modules/.vite) y reinicio de frontend.
 - Verificacion posterior:
   - http://localhost:5173 responde 200.
   - http://localhost:8000 redirige (302) al frontend como esta configurado.
@@ -1150,7 +1156,8 @@ Este archivo se usa para registrar instrucciones del usuario y cambios clave imp
     - se reemplaza el panel estatico por render condicional:
       - si can_print_receipt es 	rue, se muestra boleta completa en la misma vista (numero, fecha, datos cliente, detalle de items, subtotal) + boton Imprimir boleta.
       - si no, se mantiene mensaje de espera de aprobacion.
-    - se elimina la redireccion automatica obligatoria a esumen-final al aprobar; ahora la boleta aparece directamente en la pagina de pedido al actualizar el estado.
+    - se elimina la redireccion automatica obligatoria a 
+esumen-final al aprobar; ahora la boleta aparece directamente en la pagina de pedido al actualizar el estado.
 - Validacion:
   - docker compose exec -T frontend npm run lint -> OK.
   - docker compose exec -T frontend npm run build -> OK.
@@ -1207,7 +1214,8 @@ otice-error con mayor contraste visual para errores.
   - rontend/src/pages/OrderPage.jsx:
     - en rechazo (should_reset_checkout_data) ahora redirige a / en lugar de /carrito.
     - se siguen limpiando datos de facturacion (dv_receipt_draft_v1, latest_order).
-    - estoreCartFromSnapshot ahora no vacia carrito si no existe snapshot (evita reset no deseado).
+    - 
+estoreCartFromSnapshot ahora no vacia carrito si no existe snapshot (evita reset no deseado).
   - rontend/src/pages/AdminDashboardPage.jsx:
     - nuevo polling automatico cada 4s en tab orders para traer pedidos nuevos y actualizar resumen sin refresh manual.
   - rontend/src/pages/HomePage.jsx:
@@ -1222,7 +1230,8 @@ otice-error con mayor contraste visual para errores.
 ### 2026-05-26 (fix Too many attempts en reintento de compra)
 - Solicitud del usuario: al cancelar pedido y volver a comprar, aparece Too many attempts.
 - Causa: rate-limit muy bajo en rutas criticas de compra (12/min) para flujo real de crear/cancelar/reintentar.
-- Cambio aplicado (outes/api.php):
+- Cambio aplicado (
+outes/api.php):
   - POST /api/orders -> 	hrottle:60,1`n  - POST /api/orders/{order}/payment -> 	hrottle:60,1`n  - POST /api/orders/{order}/cancel -> 	hrottle:60,1`n- Verificacion:
   - php -l routes/api.php -> OK.
   - php artisan route:list --path=api/orders -> rutas activas confirmadas.
@@ -1391,5 +1400,69 @@ otice-error con mayor contraste visual para errores.
 - Resultado:
   - los mensajes de error de ese paso se muestran con estilo rojo y mantienen fade-out automatico.
 - Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-05-27
+- Solicitud del usuario: implementar sistema de alertas de stock bajo en dashboard admin y envio de correo al administrador cuando un producto esta por agotarse.
+- Implementacion backend:
+  - Nuevo archivo de configuracion: `config/inventory.php`.
+    - Define umbral configurable `low_stock_threshold` via variable de entorno `STOCK_LOW_THRESHOLD` (default: 5).
+  - Nuevo servicio: `app/Services/StockAlertService.php`.
+    - Determina si un producto activo esta en stock bajo o agotado segun el umbral.
+    - Consulta productos activos con stock <= umbral.
+    - Envia correo a todos los usuarios admin cuando un producto cruza el umbral (con deduplicacion via cache para no repetir alertas innecesarias).
+    - Provee payload de alerta por producto para incluir en respuestas API.
+  - Nuevo Mailable: `app/Mail/LowStockAlertMail.php`.
+    - Asunto dinamico con nombre del producto y estado (agotado / por agotarse).
+  - Nueva vista de correo: `resources/views/emails/low-stock-alert.blade.php`.
+    - Email HTML con datos del producto, stock actual y umbral configurado.
+  - `app/Http/Controllers/Api/AdminApiController.php`:
+    - Se inyecta `StockAlertService` via constructor.
+    - Endpoint `summary` ahora retorna: `low_stock_threshold`, `low_stock_count` y `low_stock_products` (lista con id, name, slug, stock, status y label).
+    - Endpoint `storeProduct` y `updateProduct` ejecutan `notifyAdminsIfNeeded()` tras guardar para disparar alerta si aplica.
+    - `productPayload` ahora incluye campos de alerta: `is_low_stock`, `stock_status`, `stock_status_label`.
+    - Nuevo metodo privado `lowStockProductPayload()` para la lista del summary.
+  - `app/Http/Controllers/Api/StoreApiController.php`:
+    - Se inyecta `StockAlertService` via constructor.
+    - Al crear un pedido y decrementar stock, se ejecuta `notifyAdminsIfNeeded()` para alertar si el stock baja al umbral.
+  - `.env` y `.env.example` actualizados con `STOCK_LOW_THRESHOLD=5`.
+- Implementacion frontend:
+  - `frontend/src/pages/AdminDashboardPage.jsx`:
+    - Estado `summary` ampliado con `low_stock_threshold`, `low_stock_count` y `low_stock_products`.
+    - Nueva caja en panel de control: "Alertas de stock" con estilo naranja si hay alertas.
+    - Nuevo panel condicional `stock-alert-panel` con lista de productos en riesgo (badge de estado y unidades restantes).
+    - Cada producto en la lista editable muestra badge de stock bajo/agotado si aplica.
+    - Polling generalizado a ambas pestanas (productos y pedidos) para mantener alertas actualizadas en tiempo real.
+  - `frontend/public/styles.css`:
+    - Nuevos estilos: `.stat-box-warning`, `.stock-alert-panel`, `.stock-alert-list`, `.stock-alert-item`, `.stock-badge`, `.product-editor.is-low-stock`, `.product-editor-head`.
+    - `.stats-grid` cambiado a `auto-fit` para acomodar 4 cajas responsive.
+  - `frontend/index.html`: cache-busting en stylesheet (`?v=2`).
+- Tests:
+  - Nuevo archivo: `tests/Feature/StockAlertTest.php`.
+    - Test `admin_summary_includes_low_stock_products`: verifica que el endpoint summary retorna productos con stock bajo.
+    - Test `stock_alert_service_sends_email_when_stock_becomes_low`: verifica envio de correo al cruzar umbral.
+  - Resultados: 2 tests pasados (5 assertions).
+- Validaciones:
+  - `php -l` sin errores en `StockAlertService`, `AdminApiController`, `StoreApiController`.
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+- Solicitud del usuario: mover alertas de stock a una campana en la esquina superior derecha del header (a la izquierda de "Cerrar sesion") y eliminar la caja de "Alertas de stock" del panel de control general.
+- Implementacion:
+  - `frontend/src/components/AdminHeader.jsx`:
+    - Se reescribe para recibir props `lowStockProducts` y `lowStockThreshold`.
+    - Se agrega icono de campana (SVG inline) con badge rojo que muestra cantidad de alertas.
+    - Se agrega dropdown desplegable al hacer clic en la campana con lista de productos en stock bajo/agotado.
+    - Cierre por clic fuera del dropdown.
+    - Campana con borde naranja si hay alertas activas.
+  - `frontend/src/pages/AdminDashboardPage.jsx`:
+    - Se pasa `lowStockProducts` y `lowStockThreshold` como props al `AdminHeader`.
+    - Se elimina el panel `stock-alert-panel` del cuerpo del dashboard.
+    - Se elimina la caja "Alertas de stock" del `stats-grid` (queda solo: Productos totales, Productos activos, Pedidos).
+  - `frontend/public/styles.css`:
+    - Nuevos estilos: `.header-actions`, `.bell-container`, `.bell-btn`, `.bell-badge`, `.bell-dropdown`, `.bell-dropdown-header`, `.bell-dropdown-summary`, `.bell-dropdown-list`, `.bell-dropdown-item`, `.bell-item-name`, `.bell-item-stock`.
+    - `.stats-grid` con `auto-fit` para adaptarse a 3 cajas.
+  - `frontend/index.html`: cache-busting actualizado (`?v=3`).
+- Validaciones:
   - `docker compose exec -T frontend npm run lint` -> OK.
   - `docker compose exec -T frontend npm run build` -> OK.

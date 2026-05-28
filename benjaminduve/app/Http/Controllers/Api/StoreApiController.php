@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 class StoreApiController extends Controller
 {
+    public function __construct(private StockAlertService $stockAlerts) {}
+
     public function products(Request $request): JsonResponse
     {
         $search = trim((string) $request->query('q', ''));
@@ -168,7 +171,9 @@ class StoreApiController extends Controller
                     'subtotal' => $subtotal,
                 ]);
 
+                $previousStock = (int) $product->stock;
                 $product->decrement('stock', $quantity);
+                $this->stockAlerts->notifyAdminsIfNeeded($product->fresh(), $previousStock);
             }
 
             return $order->load('items');

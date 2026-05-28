@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -16,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class AdminApiController extends Controller
 {
+    public function __construct(private StockAlertService $stockAlerts) {}
+
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
@@ -68,10 +71,17 @@ class AdminApiController extends Controller
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
+        $lowStockProducts = $this->stockAlerts->lowStockProducts();
+
         return response()->json([
             'product_count' => Product::count(),
             'active_product_count' => Product::where('is_active', true)->count(),
             'order_count' => Order::count(),
+            'low_stock_threshold' => $this->stockAlerts->threshold(),
+            'low_stock_count' => $lowStockProducts->count(),
+            'low_stock_products' => $lowStockProducts
+                ->map(fn (Product $product) => $this->lowStockProductPayload($product))
+                ->values(),
         ]);
     }
 
@@ -140,6 +150,8 @@ class AdminApiController extends Controller
             'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
 
+        $this->stockAlerts->notifyAdminsIfNeeded($product);
+
         return response()->json([
             'message' => 'Producto creado correctamente.',
             'data' => $this->productPayload($product),
@@ -171,6 +183,7 @@ class AdminApiController extends Controller
         ]);
 
         $measurements = $this->resolveMeasurements($data);
+        $previousStock = (int) $product->stock;
 
         $product->update([
             'name' => $data['name'],
@@ -184,6 +197,8 @@ class AdminApiController extends Controller
             'stock' => $data['stock'],
             'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
+
+        $this->stockAlerts->notifyAdminsIfNeeded($product->fresh(), $previousStock);
 
         return response()->json([
             'message' => 'Producto actualizado.',
@@ -339,7 +354,7 @@ class AdminApiController extends Controller
 
     private function productPayload(Product $product): array
     {
-        return [
+        return array_merge([
             'id' => $product->id,
             'name' => $product->name,
             'slug' => $product->slug,
@@ -351,6 +366,22 @@ class AdminApiController extends Controller
             'price' => (float) $product->price,
             'stock' => (int) $product->stock,
             'is_active' => (bool) $product->is_active,
+        ], $this->stockAlerts->productAlertPayload($product));
+    }
+
+    private function lowStockProductPayload(Product $product): array
+    {
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'stock' => (int) $product->stock,
+            'stock_status' => $this->stockAlerts->stockStatus($product),
+            'stock_status_label' => match ($this->stockAlerts->stockStatus($product)) {
+                'out_of_stock' => 'Agotado',
+                'low_stock' => 'Stock bajo',
+                default => null,
+            },
         ];
     }
 
