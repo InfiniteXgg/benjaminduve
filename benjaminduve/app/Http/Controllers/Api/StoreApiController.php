@@ -22,6 +22,7 @@ class StoreApiController extends Controller
         $search = trim((string) $request->query('q', ''));
 
         $products = Product::query()
+            ->with('images')
             ->where('is_active', true)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
@@ -47,6 +48,7 @@ class StoreApiController extends Controller
     public function productShow(string $slug): JsonResponse
     {
         $product = Product::query()
+            ->with('images')
             ->where('slug', $slug)
             ->where('is_active', true)
             ->first();
@@ -314,6 +316,13 @@ class StoreApiController extends Controller
             'price' => (float) $product->price,
             'stock' => (int) $product->stock,
             'is_active' => (bool) $product->is_active,
+            'images' => $product->images
+                ->map(fn ($image) => [
+                    'id' => $image->id,
+                    'url' => $image->url,
+                    'alt' => $image->alt ?: $product->name,
+                ])
+                ->values(),
         ];
     }
 

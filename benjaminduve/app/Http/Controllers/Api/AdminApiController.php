@@ -93,7 +93,7 @@ class AdminApiController extends Controller
 
         $search = trim((string) $request->query('q', ''));
 
-        $query = Product::query();
+        $query = Product::query()->with('images');
         if ($search !== '') {
             $query->where(function ($subQuery) use ($search) {
                 $subQuery
@@ -123,17 +123,7 @@ class AdminApiController extends Controller
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'size' => ['nullable', 'string', 'max:120'],
-            'height_cm' => ['nullable', 'numeric', 'min:0'],
-            'width_cm' => ['nullable', 'numeric', 'min:0'],
-            'depth_cm' => ['nullable', 'numeric', 'min:0'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'stock' => ['required', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validate($this->productValidationRules(), $this->productValidationMessages());
 
         $measurements = $this->resolveMeasurements($data);
 
@@ -151,10 +141,11 @@ class AdminApiController extends Controller
         ]);
 
         $this->stockAlerts->notifyAdminsIfNeeded($product);
+        $this->syncProductImages($product, $data['images'] ?? []);
 
         return response()->json([
             'message' => 'Producto creado correctamente.',
-            'data' => $this->productPayload($product),
+            'data' => $this->productPayload($product->fresh()->load('images')),
         ], 201);
     }
 
@@ -164,23 +155,14 @@ class AdminApiController extends Controller
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'size' => ['nullable', 'string', 'max:120'],
-            'height_cm' => ['nullable', 'numeric', 'min:0'],
-            'width_cm' => ['nullable', 'numeric', 'min:0'],
-            'depth_cm' => ['nullable', 'numeric', 'min:0'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'stock' => ['required', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
+        $data = $request->validate(array_merge($this->productValidationRules(), [
             'slug' => [
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('products', 'slug')->ignore($product->id),
             ],
-        ]);
+        ]), $this->productValidationMessages());
 
         $measurements = $this->resolveMeasurements($data);
         $previousStock = (int) $product->stock;
@@ -199,10 +181,11 @@ class AdminApiController extends Controller
         ]);
 
         $this->stockAlerts->notifyAdminsIfNeeded($product->fresh(), $previousStock);
+        $this->syncProductImages($product, $data['images'] ?? []);
 
         return response()->json([
             'message' => 'Producto actualizado.',
-            'data' => $this->productPayload($product->fresh()),
+            'data' => $this->productPayload($product->fresh()->load('images')),
         ]);
     }
 
@@ -352,6 +335,33 @@ class AdminApiController extends Controller
         ];
     }
 
+    private function productValidationRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'size' => ['nullable', 'string', 'max:120'],
+            'height_cm' => ['nullable', 'numeric', 'min:0'],
+            'width_cm' => ['nullable', 'numeric', 'min:0'],
+            'depth_cm' => ['nullable', 'numeric', 'min:0'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+            'images' => ['nullable', 'array', 'max:8'],
+            'images.*.url' => ['required_with:images', 'string', 'max:2500000'],
+            'images.*.alt' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    private function productValidationMessages(): array
+    {
+        return [
+            'images.max' => 'Puedes guardar hasta 8 fotos por producto.',
+            'images.*.url.max' => 'Una de las fotos es demasiado pesada. Prueba con una imagen mas liviana.',
+            'images.*.url.required_with' => 'Cada foto necesita una URL valida.',
+        ];
+    }
+
     private function productPayload(Product $product): array
     {
         return array_merge([
@@ -366,7 +376,49 @@ class AdminApiController extends Controller
             'price' => (float) $product->price,
             'stock' => (int) $product->stock,
             'is_active' => (bool) $product->is_active,
+            'images' => $product->images
+                ->map(fn ($image) => [
+                    'id' => $image->id,
+                    'url' => $image->url,
+                    'alt' => $image->alt ?: $product->name,
+                ])
+                ->values(),
         ], $this->stockAlerts->productAlertPayload($product));
+    }
+
+    private function syncProductImages(Product $product, array $images): void
+    {
+        $sanitized = collect($images)
+            ->map(function ($image) use ($product) {
+                $url = trim((string) ($image['url'] ?? ''));
+                if ($url === '' || !$this->isSupportedImageSource($url)) {
+                    return null;
+                }
+
+                return [
+                    'url' => $url,
+                    'alt' => trim((string) ($image['alt'] ?? '')) ?: $product->name,
+                ];
+            })
+            ->filter()
+            ->take(8)
+            ->values();
+
+        $product->images()->delete();
+
+        foreach ($sanitized as $index => $image) {
+            $product->images()->create([
+                'url' => $image['url'],
+                'alt' => $image['alt'],
+                'sort_order' => $index,
+            ]);
+        }
+    }
+
+    private function isSupportedImageSource(string $url): bool
+    {
+        return str_starts_with($url, 'data:image/')
+            || filter_var($url, FILTER_VALIDATE_URL) !== false;
     }
 
     private function lowStockProductPayload(Product $product): array

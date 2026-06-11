@@ -11,6 +11,7 @@ export default function CartPage() {
   const navigate = useNavigate()
   const { items, total, updateItemQuantity, removeItem } = useCart()
   const [notice, setNotice] = useState('')
+  const [removingItems, setRemovingItems] = useState({})
 
   useEffect(() => {
     const flash = localStorage.getItem(CART_NOTICE_KEY)
@@ -25,6 +26,20 @@ export default function CartPage() {
     return () => clearTimeout(id)
   }, [notice])
 
+  const onRemoveItem = (productId) => {
+    if (removingItems[productId]) return
+
+    setRemovingItems((current) => ({ ...current, [productId]: true }))
+    window.setTimeout(() => {
+      removeItem(productId)
+      setRemovingItems((current) => {
+        const next = { ...current }
+        delete next[productId]
+        return next
+      })
+    }, 260)
+  }
+
   return (
     <div className="app-shell">
       <PublicHeader />
@@ -38,7 +53,7 @@ export default function CartPage() {
             <>
               <div className="stack">
                 {items.map((item) => (
-                  <article key={item.id} className="row-card">
+                  <article key={item.id} className={`row-card cart-item ${removingItems[item.id] ? 'is-removing' : ''}`}>
                     <div>
                       <strong>{item.name}</strong>
                       <p className="muted">
@@ -55,7 +70,9 @@ export default function CartPage() {
                         value={item.quantity}
                         onChange={(e) => updateItemQuantity(item.id, Number(e.target.value || 1))}
                       />
-                      <button type="button" onClick={() => removeItem(item.id)}>Quitar</button>
+                      <button type="button" onClick={() => onRemoveItem(item.id)} disabled={Boolean(removingItems[item.id])}>
+                        Quitar
+                      </button>
                     </div>
                   </article>
                 ))}

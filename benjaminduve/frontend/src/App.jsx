@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import ProductPage from './pages/ProductPage'
 import CartPage from './pages/CartPage'
@@ -17,26 +17,30 @@ function AdminProtectedRoute({ children }) {
 }
 
 export default function App() {
+  const location = useLocation()
+
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/producto/:slug" element={<ProductPage />} />
-      <Route path="/carrito" element={<CartPage />} />
-      <Route path="/pre-checkout" element={<PreCheckoutPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
-      <Route path="/pedido/:orderId" element={<OrderPage />} />
-      <Route path="/pedido/:orderId/pasarela" element={<PaymentGatewayPage />} />
-      <Route path="/pedido/:orderId/resumen-final" element={<FinalOrderSummaryPage />} />
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route
-        path="/admin"
-        element={(
-          <AdminProtectedRoute>
-            <AdminDashboardPage />
-          </AdminProtectedRoute>
-        )}
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div className="route-transition" key={location.pathname}>
+      <Routes location={location}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/producto/:slug" element={<ProductPage />} />
+        <Route path="/carrito" element={<CartPage />} />
+        <Route path="/pre-checkout" element={<PreCheckoutPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/pedido/:orderId" element={<OrderPage />} />
+        <Route path="/pedido/:orderId/pasarela" element={<PaymentGatewayPage />} />
+        <Route path="/pedido/:orderId/resumen-final" element={<FinalOrderSummaryPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route
+          path="/admin"
+          element={(
+            <AdminProtectedRoute>
+              <AdminDashboardPage />
+            </AdminProtectedRoute>
+          )}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
   )
 }

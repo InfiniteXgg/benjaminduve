@@ -1466,3 +1466,333 @@ outes/api.php):
 - Validaciones:
   - `docker compose exec -T frontend npm run lint` -> OK.
   - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (modo oscuro por defecto + switch de tema en header)
+- Solicitud del usuario:
+  - hacer que toda la pagina use modo oscuro por defecto siempre.
+  - permitir activar/desactivar el modo oscuro con un slider comodo en el header.
+- Implementacion:
+  - `frontend/src/components/ThemeToggle.jsx`:
+    - nuevo componente de interruptor tipo slider.
+    - usa `localStorage` con clave `bdv_theme` para persistir preferencia.
+    - aplica `document.documentElement.dataset.theme` con valores `dark` o `light`.
+  - `frontend/src/components/PublicHeader.jsx`:
+    - se agrega `ThemeToggle` junto a las acciones del header publico.
+  - `frontend/src/components/AdminHeader.jsx`:
+    - se agrega `ThemeToggle` en el header del dashboard admin.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - el tema oscuro pasa a ser el tema base en `:root`.
+    - el tema claro queda como override explicito en `html[data-theme='light']`.
+    - se agregan estilos del slider `.theme-toggle` con dimensiones fijas para no mover el header.
+  - `frontend/index.html`:
+    - se agrega script temprano que aplica `bdv_theme` o `dark` antes de cargar CSS para evitar parpadeos.
+    - se actualiza cache-buster de `/styles.css?v=3` a `/styles.css?v=4`.
+  - `frontend/.gitignore`:
+    - se agrega `.vite` para evitar que ESLint analice cache generada por Vite.
+- Limpieza:
+  - se elimina cache generada `frontend/.vite` desde el contenedor frontend.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (icono sutil en slider de tema)
+- Solicitud del usuario:
+  - agregar un icono muy pequeno de sol o luna en el slider de tema.
+  - el icono debe aparecer en el lado opuesto al circulo del slider y con baja opacidad.
+- Implementacion:
+  - `frontend/src/components/ThemeToggle.jsx`:
+    - se agregan iconos SVG minimalistas de sol y luna dentro del track del slider.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agregan estilos `.theme-toggle-icon`, `.theme-toggle-sun` y `.theme-toggle-moon`.
+    - en modo oscuro se muestra el sol al lado izquierdo, opuesto al thumb.
+    - en modo claro se muestra la luna al lado derecho, opuesto al thumb.
+    - opacidad baja (`.42`) para que sea una guia visual discreta.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (transicion suave al cambiar tema)
+- Solicitud del usuario:
+  - agregar una transicion pequena al cambiar entre modo oscuro y modo claro para que no sea abrupto.
+- Implementacion:
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agregan transiciones de `background`, `background-color`, `color`, `border-color` y `box-shadow` a los elementos principales de layout, tarjetas, botones, inputs, modales, notificaciones y tablas.
+    - duracion: `.22s ease`, suficiente para suavizar sin hacer lenta la interfaz.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (catalogo: busqueda desplegable en tiempo real)
+- Solicitud del usuario:
+  - cambiar la busqueda del catalogo para que se active desde un boton cercano al header, sin interferir con este.
+  - abrir una pestaña/popup grande sin cambiar de pagina, cayendo desde arriba con animacion.
+  - eliminar boton `Buscar`.
+  - filtrar resultados en tiempo real mientras el usuario escribe.
+  - agregar una X para cerrar la pestaña con animacion de salida hacia arriba.
+- Implementacion:
+  - `frontend/src/pages/HomePage.jsx`:
+    - se elimina el formulario visible con boton `Buscar`.
+    - se agrega boton `Buscar` en la cabecera del catalogo.
+    - se agrega panel desplegable `catalog-search-layer` con input de busqueda y boton `X`.
+    - la busqueda usa estado local `searchDraft` y debounce de 260ms para actualizar `?q=` y resetear `page=1`.
+    - al cambiar `q`, el flujo existente de `storeApi.listProducts` actualiza resultados automaticamente.
+    - el cierre usa estado `searchPanelClosing` para permitir animacion de salida antes de desmontar el panel.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - estilos para `catalog-head`, `catalog-search-trigger`, `catalog-search-layer`, `catalog-search-panel`, `catalog-search-content`, `search-close-btn`.
+    - animaciones `catalog-search-in` y `catalog-search-out`.
+    - ajustes responsive para mobile.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (catalogo: cabecera compacta + lupa + limpieza de textos)
+- Solicitud del usuario:
+  - dejar de usar textos visibles que expliquen como funciona la UI.
+  - eliminar especificamente `Escribe para filtrar productos en tiempo real.` del popup de busqueda.
+  - eliminar `Explora los productos de Benjaminduve.`.
+  - corregir `Catalogo` a `Catálogo` y centrarlo.
+  - reemplazar boton `Buscar` por icono minimalista de lupa.
+  - acercar la lupa al titulo y hacer menos ancho el bloque visual detras de ambos.
+- Implementacion:
+  - `frontend/src/pages/HomePage.jsx`:
+    - se elimina el parrafo de ayuda del popup de busqueda.
+    - se elimina la bajada descriptiva bajo el titulo del catalogo.
+    - titulo cambia a `Catálogo`.
+    - boton de busqueda queda como icono SVG de lupa con `aria-label`.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - `catalog-head` pasa a un bloque centrado y compacto (`width: min(310px, 100%)`).
+    - se centra el titulo.
+    - `catalog-search-trigger` pasa a boton cuadrado de 36px con icono de lupa.
+    - se ajusta mobile para conservar el mismo layout compacto.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (catalogo: lupa movida al header y sin titulo visible)
+- Solicitud del usuario:
+  - revertir el bloque visual de `Catálogo` porque no gusto.
+  - eliminar el texto visible `Catálogo` del cuerpo de la pagina.
+  - mover el icono de lupa al lado derecho del logo de la empresa en el header.
+- Implementacion:
+  - `frontend/src/components/PublicHeader.jsx`:
+    - se agrega prop opcional `onSearchClick`.
+    - se crea grupo `brand-actions` para logo + boton de lupa.
+    - la lupa solo aparece cuando una pagina entrega `onSearchClick`.
+  - `frontend/src/pages/HomePage.jsx`:
+    - `PublicHeader` recibe `onSearchClick={openSearchPanel}`.
+    - se elimina el bloque `catalog-head` del cuerpo.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agregan estilos `brand-actions` y `header-search-trigger`.
+    - se eliminan estilos ya no usados de `catalog-head` y `catalog-search-trigger`.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (catalogo: sin parpadeo de carga en busqueda + fade de resultados)
+- Solicitud del usuario:
+  - al buscar un item se veia por un frame la pagina en estado de carga.
+  - eliminar ese parpadeo.
+  - hacer que los productos resultantes aparezcan lentamente con difuminado.
+- Implementacion:
+  - `frontend/src/pages/HomePage.jsx`:
+    - se agrega `hasLoadedOnce` para mostrar `Cargando productos...` solo en la primera carga real.
+    - durante busquedas posteriores, los productos actuales permanecen visibles hasta que llega la nueva respuesta.
+    - se agrega `resultsAnimationKey` que se incrementa al recibir resultados para reiniciar la animacion de entrada.
+    - la grilla usa clase `catalog-results` y `key={resultsAnimationKey}`.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agrega animacion `catalog-card-fade`.
+    - `.catalog-results .card` aparece con fade y desplazamiento leve.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (transicion global entre paginas)
+- Solicitud del usuario:
+  - al cambiar de pagina (carrito, checkout, etc.) debe haber una animacion suave para evitar cargas abruptas.
+- Implementacion:
+  - `frontend/src/App.jsx`:
+    - se usa `useLocation`.
+    - `Routes` queda envuelto en `<div className="route-transition" key={location.pathname}>` para reactivar la animacion al cambiar de ruta.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agrega `.route-transition` con animacion `route-fade-in`.
+    - la animacion usa fade + desplazamiento leve (`.24s ease`).
+    - se respeta `prefers-reduced-motion: reduce` desactivando la animacion.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (catalogo: tarjetas simples y detalle en modal)
+- Solicitud del usuario:
+  - en la pagina principal cada producto debe mostrar solamente nombre, foto y precio.
+  - al presionar la foto debe abrirse un popup grande con animacion, fondo difuminado y detalle completo.
+  - eliminar botones visibles `Ver detalle` y `Anadir` de las tarjetas.
+  - el popup debe mostrar galeria de fotos, stock disponible, descripcion, medidas y opcion de agregar al carrito.
+- Implementacion:
+  - `frontend/src/pages/HomePage.jsx`:
+    - las tarjetas del catalogo ahora solo muestran imagen/placeholder clickeable, nombre y precio.
+    - se agrega modal de detalle con galeria, miniaturas, descripcion, stock, medidas y cantidad para agregar al carrito.
+    - se elimina la logica antigua de contador visible en tarjetas.
+    - el modal se puede cerrar con `Escape`, con la `X` o clic fuera del panel.
+  - `app/Http/Controllers/Api/StoreApiController.php`:
+    - el payload publico de producto ahora incluye `images: []` para preparar multiples fotos por producto sin romper el frontend actual.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agregan estilos de tarjetas simplificadas.
+    - se agrega overlay con blur, panel grande responsive, galeria, miniaturas y animaciones del modal.
+    - se respeta `prefers-reduced-motion: reduce`.
+  - `frontend/index.html`:
+    - se sube `styles.css` a `v=5` para evitar cache viejo del navegador.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+  - `php -l app/Http/Controllers/Api/StoreApiController.php` -> OK.
+  - `curl.exe -I http://localhost:5173` -> HTTP 200 OK.
+
+### 2026-06-11 (catalogo sin paginacion visual + animacion al quitar carrito)
+- Solicitud del usuario:
+  - eliminar la seccion inferior del catalogo que mostraba `Pagina 1 de 1`.
+  - al eliminar un producto del carrito, hacerlo desaparecer con una animacion elegante.
+  - al pasar el mouse sobre las fotos del catalogo, usar cursor de click normal y no lupa.
+- Implementacion:
+  - `frontend/src/pages/HomePage.jsx`:
+    - se elimina el bloque visual de paginacion bajo la grilla de productos.
+    - se elimina estado `meta` que ya no se usa en la vista.
+  - `frontend/src/pages/CartPage.jsx`:
+    - se agrega estado local `removingItems`.
+    - el boton `Quitar` primero marca el item como saliendo y luego lo elimina del carrito tras la animacion.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - `.catalog-card-image` usa `cursor: pointer`.
+    - se agregan estilos `.cart-item` y `.cart-item.is-removing` con fade, desplazamiento y colapso suave.
+  - `frontend/index.html`:
+    - se sube `styles.css` a `v=6` para evitar cache viejo del navegador.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (medidas de producto en formato lista)
+- Solicitud del usuario:
+  - las medidas del producto en el popup se veian muy apiladas y debian mostrarse como lista.
+- Implementacion:
+  - `frontend/src/pages/HomePage.jsx`:
+    - se reemplaza el texto unico de medidas por `productMeasurementItems()`.
+    - el modal renderiza las medidas como lista con etiqueta y valor (`Talla`, `Alto`, `Ancho`, `Profundidad`).
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agrega `.measurement-list` para separar visualmente cada medida.
+  - `frontend/index.html`:
+    - se sube `styles.css` a `v=7` para evitar cache viejo del navegador.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (stock compacto en modal de producto)
+- Solicitud del usuario:
+  - la caja de stock del popup tenia demasiado espacio alrededor del numero.
+- Implementacion:
+  - `frontend/src/pages/HomePage.jsx`:
+    - se agrega clase `stock-detail-card` al bloque de stock.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se compacta el padding, separacion y altura del bloque de stock.
+    - se ajusta el tamaño/line-height del numero de stock.
+  - `frontend/index.html`:
+    - se sube `styles.css` a `v=8` para evitar cache viejo del navegador.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (admin: fotos de productos + pedidos en actualizacion continua)
+- Solicitud del usuario:
+  - rework del panel administrativo para poder poner fotos a productos.
+  - pedidos del admin deben actualizarse sin refrescar la pagina.
+  - actualizar seeders de productos y repoblar la base de datos.
+- Implementacion backend:
+  - `database/migrations/2026_06_11_200000_create_product_images_table.php`:
+    - se crea tabla `product_images` con `product_id`, `url`, `alt` y `sort_order`.
+  - `app/Models/ProductImage.php`:
+    - nuevo modelo para imagenes de productos.
+  - `app/Models/Product.php`:
+    - se agrega relacion `images()` ordenada.
+  - `app/Http/Controllers/Api/AdminApiController.php`:
+    - productos admin cargan `images`.
+    - crear/editar producto acepta hasta 8 imagenes.
+    - se sincronizan imagenes al guardar.
+    - payload de producto incluye galeria.
+  - `app/Http/Controllers/Api/StoreApiController.php`:
+    - catalogo publico y detalle cargan imagenes.
+    - payload publico incluye galeria real.
+- Implementacion frontend:
+  - `frontend/src/pages/AdminDashboardPage.jsx`:
+    - productos tienen editor de fotos por URLs multilinea.
+    - se permite cargar archivos locales de imagen y convertirlos a data URL para vista previa/guardado.
+    - se muestran miniaturas en el editor.
+    - polling de pedidos pasa a ejecutarse cada 2.5s y no recarga productos mientras se editan.
+  - `frontend/src/pages/HomePage.jsx`:
+    - tarjetas del catalogo muestran la primera foto real si existe.
+    - el popup sigue mostrando la galeria completa.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - estilos para previews del admin y fotos reales del catalogo.
+  - `frontend/index.html`:
+    - se sube `styles.css` a `v=9` para evitar cache viejo del navegador.
+- Seeders y base de datos:
+  - `database/seeders/PlaceholderProductsSeeder.php`:
+    - los 5 productos placeholder ahora incluyen 2 imagenes SVG embebidas cada uno.
+    - se actualizan descripciones y parametros para calzar con el modelo actual.
+  - Se ejecuto `docker compose exec -T app php artisan migrate:fresh --seed` correctamente.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+  - `php -l` en modelo, controladores, migracion y seeder modificados -> OK.
+  - `docker compose exec -T db mysql -uroot -proot benjaminduve -e "SELECT COUNT(*) ..."` -> 5 productos y 10 imagenes.
+
+### 2026-06-11 (documentacion local en Descargas)
+- Solicitud del usuario:
+  - crear un archivo `.txt` en la carpeta de Descargas con la explicacion general de como funciona la pagina.
+- Implementacion:
+  - se crea `explicacion_benjaminduve.txt` en la carpeta de Descargas del usuario de Windows.
+  - el archivo resume arquitectura, frontend, backend, API, carrito, admin, base de datos, seeders y flujo de compra.
+### 2026-06-11 (admin: ocultar data URL cruda en editor de fotos)
+- Solicitud del usuario:
+  - en el panel admin aparecia texto largo `data:image...` dentro del editor de fotos, lo que no tenia sentido visual.
+- Implementacion:
+  - `frontend/src/pages/AdminDashboardPage.jsx`:
+    - el textarea de fotos ahora muestra solo URLs externas legibles.
+    - las imagenes embebidas `data:image/` se conservan internamente, pero se muestran solo como miniaturas.
+    - al escribir URLs externas no se borran las imagenes cargadas desde archivo.
+    - se agrega nota discreta para indicar que las fotos cargadas aparecen como miniaturas.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se reduce la altura del textarea de URLs.
+    - se agrega estilo `image-editor-note`.
+  - `frontend/index.html`:
+    - se sube `styles.css` a `v=10` para evitar cache viejo del navegador.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+
+### 2026-06-11 (admin: imagenes pesadas + lista plegable de productos)
+- Solicitud del usuario:
+  - corregir error `The images.0.url field must not be greater than 500000 characters`.
+  - embellecer panel de control de admin.
+  - mostrar campos de edicion de producto solo al hacer click en el producto.
+  - usar una lista minimalista para productos.
+  - mostrar errores al centro de pantalla para llamar la atencion del admin.
+  - agregar etiquetas visibles sobre cada campo.
+  - al agregar producto, mostrar el modal arriba para no tener que bajar con el mouse.
+- Implementacion:
+  - `frontend/src/pages/AdminDashboardPage.jsx`:
+    - se agrega compresion/redimensionado adaptativo de imagenes antes de convertirlas a data URL.
+    - se rechazan imagenes que sigan siendo demasiado pesadas antes de enviarlas al backend.
+    - se agrega `AdminField` para campos con etiqueta superior.
+    - productos del dashboard ahora se muestran como lista minimalista.
+    - solo el producto seleccionado despliega su formulario de edicion.
+    - el modal de agregar producto usa campos etiquetados y aparece mas arriba en pantalla.
+    - errores usan `noticeTone='error'` y se muestran centrados.
+  - `app/Http/Controllers/Api/AdminApiController.php`:
+    - se sube el limite backend para `images.*.url` a 2.500.000 caracteres.
+    - se agregan mensajes de validacion en espanol para imagenes grandes.
+    - se extraen reglas/mensajes de validacion de producto a helpers reutilizables.
+  - `frontend/public/styles.css` y `frontend/src/index.css`:
+    - se agregan estilos para lista minimalista de productos, panel desplegable, campos admin, modal de creacion y notificacion centrada.
+  - `frontend/index.html`:
+    - se sube `styles.css` a `v=11` para evitar cache viejo del navegador.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` -> OK.
+  - `docker compose exec -T frontend npm run build` -> OK.
+  - `php -l app/Http/Controllers/Api/AdminApiController.php` -> OK.

@@ -1,16 +1,33 @@
 import { NavLink } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import BrandLogo from './BrandLogo'
+import ThemeToggle from './ThemeToggle'
 
-export default function PublicHeader() {
+export default function PublicHeader({ onSearchClick = null }) {
   const { distinctCount } = useCart()
 
   return (
     <header className="top-header">
       <div className="header-wrap">
-        <a href="/" className="brand-link" aria-label="Ir al home">
-          <BrandLogo />
-        </a>
+        <div className="brand-actions">
+          <a href="/" className="brand-link" aria-label="Ir al home">
+            <BrandLogo />
+          </a>
+          {onSearchClick && (
+            <button
+              type="button"
+              className="header-search-trigger"
+              onClick={onSearchClick}
+              aria-label="Buscar productos"
+              title="Buscar productos"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="11" cy="11" r="6"></circle>
+                <path d="M16 16l4 4"></path>
+              </svg>
+            </button>
+          )}
+        </div>
         <nav className="header-nav">
           <a href="/" className="nav-btn">
             HOME
@@ -19,6 +36,7 @@ export default function PublicHeader() {
             Carrito
             {distinctCount > 0 && <span className="cart-badge">{distinctCount}</span>}
           </NavLink>
+          <ThemeToggle />
           <a
             href="https://instagram.com/benjaminduve"
             className="nav-btn icon-btn"

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import BrandLogo from './BrandLogo'
+import ThemeToggle from './ThemeToggle'
 
 export default function AdminHeader({ tab, onChangeTab, onLogout, lowStockProducts = [], lowStockThreshold = 5 }) {
   const [bellOpen, setBellOpen] = useState(false)
@@ -33,6 +34,7 @@ export default function AdminHeader({ tab, onChangeTab, onLogout, lowStockProduc
           </button>
         </div>
         <div className="header-actions">
+          <ThemeToggle />
           <div className="bell-container" ref={dropdownRef}>
             <button
               className={`nav-btn icon-btn bell-btn ${alertCount > 0 ? 'has-alerts' : ''}`}
