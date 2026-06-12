@@ -42,6 +42,7 @@ export default function HomePage() {
   const [searchDraft, setSearchDraft] = useState(params.get('q') || '')
   const [searchPanelOpen, setSearchPanelOpen] = useState(false)
   const [searchPanelClosing, setSearchPanelClosing] = useState(false)
+  const [searchPanelCloseTimeout, setSearchPanelCloseTimeout] = useState(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [detailQuantity, setDetailQuantity] = useState(1)
@@ -111,16 +112,38 @@ export default function HomePage() {
   }, [searchDraft, search, setParams])
 
   const openSearchPanel = () => {
+    if (searchPanelCloseTimeout) clearTimeout(searchPanelCloseTimeout)
     setSearchPanelClosing(false)
     setSearchPanelOpen(true)
   }
 
   const closeSearchPanel = () => {
+    if (searchPanelCloseTimeout) clearTimeout(searchPanelCloseTimeout)
     setSearchPanelClosing(true)
     window.setTimeout(() => {
       setSearchPanelOpen(false)
       setSearchPanelClosing(false)
     }, 220)
+  }
+
+  const toggleSearchPanel = () => {
+    if (searchPanelCloseTimeout) clearTimeout(searchPanelCloseTimeout)
+    if (searchPanelOpen) {
+      closeSearchPanel()
+    } else {
+      openSearchPanel()
+    }
+  }
+
+  const handleSearchInputBlur = () => {
+    const timeout = window.setTimeout(() => {
+      closeSearchPanel()
+    }, 180)
+    setSearchPanelCloseTimeout(timeout)
+  }
+
+  const handleSearchInputFocus = () => {
+    if (searchPanelCloseTimeout) clearTimeout(searchPanelCloseTimeout)
   }
 
   const showInitialLoading = loading && !hasLoadedOnce
@@ -176,25 +199,18 @@ export default function HomePage() {
 
   return (
     <div className="app-shell">
-      <PublicHeader onSearchClick={openSearchPanel} />
+      <PublicHeader onSearchClick={toggleSearchPanel} />
       {searchPanelOpen && (
-        <div className={`catalog-search-layer ${searchPanelClosing ? 'is-closing' : 'is-open'}`}>
-          <section className="catalog-search-panel" role="dialog" aria-label="Buscar productos">
-            <button
-              type="button"
-              className="search-close-btn"
-              onClick={closeSearchPanel}
-              aria-label="Cerrar busqueda"
-              title="Cerrar busqueda"
-            >
-              X
-            </button>
+        <div className={`catalog-search-layer ${searchPanelClosing ? 'is-closing' : 'is-open'}`} onClick={closeSearchPanel} role="presentation">
+          <section className="catalog-search-panel" role="dialog" aria-label="Buscar productos" onClick={(e) => e.stopPropagation()}>
             <div className="catalog-search-content">
               <span className="muted">Buscar en catalogo</span>
               <input
                 autoFocus
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
+                onBlur={handleSearchInputBlur}
+                onFocus={handleSearchInputFocus}
                 placeholder="Escribe el nombre de un producto..."
                 aria-label="Buscar producto"
               />

@@ -15,6 +15,7 @@ const EMPTY_PRODUCT = {
   price: '',
   stock: '',
   is_active: true,
+  mainImage: '',
   images: [],
 }
 
@@ -147,6 +148,8 @@ export default function AdminDashboardPage() {
   const [removingProductSlug, setRemovingProductSlug] = useState('')
   const [expandedProductId, setExpandedProductId] = useState(null)
 
+  const [dragging, setDragging] = useState(null) // { productId, index, isNew }
+
   const [orders, setOrders] = useState([])
   const [orderMeta, setOrderMeta] = useState({})
   const [orderQ, setOrderQ] = useState('')
@@ -209,11 +212,12 @@ export default function AdminDashboardPage() {
     try {
       const product = products.find((item) => item.id === productId)
       const newImages = await readImageFiles(files, product?.name || 'Producto')
-      setProducts((prev) => prev.map((item) => (
-        item.id === productId
-          ? { ...item, images: [...(item.images || []), ...newImages].slice(0, 8) }
-          : item
-      )))
+      setProducts((prev) => prev.map((item) => {
+        if (item.id !== productId) return item
+        const imagesList = [...(item.images || []), ...newImages].slice(0, 8)
+        const mainImage = item.mainImage || imagesList[0]?.url || ''
+        return { ...item, images: imagesList, mainImage }
+      }))
     } catch (error) {
       showNotice(error.message, 'error')
     }
@@ -222,13 +226,22 @@ export default function AdminDashboardPage() {
   const addImagesToNewProduct = async (files) => {
     try {
       const newImages = await readImageFiles(files, newProduct.name || 'Producto')
-      setNewProduct((prev) => ({
-        ...prev,
-        images: [...(prev.images || []), ...newImages].slice(0, 8),
-      }))
+      setNewProduct((prev) => {
+        const imagesList = [...(prev.images || []), ...newImages].slice(0, 8)
+        const mainImage = prev.mainImage || imagesList[0]?.url || ''
+        return { ...prev, images: imagesList, mainImage }
+      })
     } catch (error) {
       showNotice(error.message, 'error')
     }
+  }
+
+  const removeNewProductImage = (indexToRemove) => {
+    setNewProduct((prev) => {
+      const imagesList = (prev.images || []).filter((_, index) => index !== indexToRemove)
+      const mainImage = prev.mainImage === prev.images?.[indexToRemove]?.url ? (imagesList[0]?.url || '') : prev.mainImage
+      return { ...prev, images: imagesList, mainImage }
+    })
   }
 
   useEffect(() => {
@@ -296,6 +309,7 @@ export default function AdminDashboardPage() {
   const onCreateProduct = async (event) => {
     event.preventDefault()
     try {
+      const images = normalizeProductImages(newProduct.images, newProduct.name)
       const payload = {
         ...newProduct,
         price: Number(newProduct.price || 0),
@@ -304,7 +318,8 @@ export default function AdminDashboardPage() {
         height_cm: newProduct.height_cm === '' ? null : Number(newProduct.height_cm),
         width_cm: newProduct.width_cm === '' ? null : Number(newProduct.width_cm),
         depth_cm: newProduct.depth_cm === '' ? null : Number(newProduct.depth_cm),
-        images: normalizeProductImages(newProduct.images, newProduct.name),
+        images,
+        mainImage: images[0]?.url || '',
       }
       const response = await adminApi.createProduct(payload)
       showNotice(response.message || 'Producto creado correctamente.')
@@ -319,6 +334,7 @@ export default function AdminDashboardPage() {
 
   const onUpdateProduct = async (product) => {
     try {
+      const images = normalizeProductImages(product.images, product.name)
       const payload = {
         name: product.name,
         slug: product.slug,
@@ -330,7 +346,8 @@ export default function AdminDashboardPage() {
         price: Number(product.price || 0),
         stock: Number(product.stock || 0),
         is_active: Boolean(product.is_active),
-        images: normalizeProductImages(product.images, product.name),
+        images,
+        mainImage: images[0]?.url || '',
       }
       const response = await adminApi.updateProduct(product.slug, payload)
       showNotice(response.message)
@@ -338,6 +355,55 @@ export default function AdminDashboardPage() {
     } catch (error) {
       showNotice(readApiError(error), 'error')
     }
+  }
+
+  const removeProductImage = async (productId, indexToRemove) => {
+    const product = products.find((item) => item.id === productId)
+    if (!product) return
+
+    const imagesList = (product.images || []).filter((_, index) => index !== indexToRemove)
+    const mainImage = product.mainImage === product.images?.[indexToRemove]?.url ? (imagesList[0]?.url || '') : product.mainImage
+
+    const updatedProduct = { ...product, images: imagesList, mainImage }
+
+    setProducts((prev) => prev.map((item) => (
+      item.id === productId ? updatedProduct : item
+    )))
+
+    if (updatedProduct.slug) {
+      await onUpdateProduct(updatedProduct)
+    }
+  }
+
+  const reorderArray = (arr, fromIndex, toIndex) => {
+    const copy = [...arr]
+    const [moved] = copy.splice(fromIndex, 1)
+    copy.splice(toIndex, 0, moved)
+    return copy
+  }
+
+  const reorderProductImages = (productId, fromIndex, toIndex) => {
+    let updatedProduct = null
+    setProducts((prev) => prev.map((p) => {
+      if (p.id !== productId) return p
+      const imagesList = reorderArray(p.images || [], fromIndex, toIndex)
+      const mainImage = imagesList[0]?.url || ''
+      updatedProduct = { ...p, images: imagesList, mainImage }
+      return updatedProduct
+    }))
+    if (updatedProduct) {
+      onUpdateProduct(updatedProduct).catch(() => {})
+    }
+    setDragging(null)
+  }
+
+  const reorderNewProductImages = (fromIndex, toIndex) => {
+    setNewProduct((prev) => {
+      const imagesList = reorderArray(prev.images || [], fromIndex, toIndex)
+      const mainImage = imagesList[0]?.url || ''
+      return { ...prev, images: imagesList, mainImage }
+    })
+    setDragging(null)
   }
 
   const onDeleteProduct = async (slug) => {
@@ -485,15 +551,40 @@ export default function AdminDashboardPage() {
                       <div className="product-images-editor">
                         <span className="admin-field-title">Fotos del producto</span>
                         <div className="product-image-previews">
-                          {(product.images || []).length > 0 ? (
-                            product.images.map((image, index) => (
-                              <div className="product-image-preview" key={`${image.url}-${index}`}>
-                                <img src={image.url} alt={image.alt || product.name} />
-                              </div>
-                            ))
-                          ) : (
-                            <span className="muted">Sin fotos cargadas</span>
-                          )}
+                          {(product.images || []).length > 0
+                            ? product.images.map((image, index) => {
+                                return (
+                                  <div
+                                    className={`product-image-preview relative group ${(dragging && !dragging.isNew && dragging.productId === product.id && dragging.index === index) ? 'is-dragging' : ''}`}
+                                    key={`${image.url}-${index}`}
+                                      draggable
+                                      onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(index)); setDragging({ productId: product.id, index, isNew: false }) }}
+                                      onDragEnd={() => setDragging(null)}
+                                      onDragOver={(e) => e.preventDefault()}
+                                      onDrop={(e) => {
+                                        const from = parseInt(e.dataTransfer.getData('text/plain'), 10)
+                                        if (!Number.isNaN(from)) reorderProductImages(product.id, from, index)
+                                      }}
+                                  >
+                                    <img src={image.url} alt={image.alt || product.name} />
+                                    <button
+                                      type="button"
+                                      className="image-remove-btn"
+                                      onClick={() => setProducts((prev) => prev.map((p) => {
+                                        if (p.id !== product.id) return p
+                                        const imagesList = (p.images || []).filter((_, i) => i !== index)
+                                        const mainImage = p.mainImage === image.url ? (imagesList[0]?.url || '') : p.mainImage
+                                        return { ...p, images: imagesList, mainImage }
+                                      }))}
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                )
+                              })
+                            : (
+                                <span className="muted">Sin fotos cargadas</span>
+                              )}
                         </div>
                         <span className="image-editor-note">Fotos cargadas como miniaturas. Agrega URLs externas solo si las necesitas.</span>
                         <AdminField label="URLs externas">
@@ -520,13 +611,6 @@ export default function AdminDashboardPage() {
                               }}
                             />
                           </label>
-                          <button
-                            type="button"
-                            className="btn-alt"
-                            onClick={() => setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, images: [] } : p))}
-                          >
-                            Limpiar fotos
-                          </button>
                         </div>
                       </div>
 
@@ -705,15 +789,39 @@ export default function AdminDashboardPage() {
               <div className="product-images-editor">
                 <span className="admin-field-title">Fotos del producto</span>
                 <div className="product-image-previews">
-                  {(newProduct.images || []).length > 0 ? (
-                    newProduct.images.map((image, index) => (
-                      <div className="product-image-preview" key={`${image.url}-${index}`}>
-                        <img src={image.url} alt={image.alt || newProduct.name || 'Producto'} />
-                      </div>
-                    ))
-                  ) : (
-                    <span className="muted">Sin fotos cargadas</span>
-                  )}
+                  {(newProduct.images || []).length > 0
+                    ? newProduct.images.map((image, index) => {
+                        return (
+                          <div
+                            className={`product-image-preview relative group ${(dragging && dragging.isNew && dragging.index === index) ? 'is-dragging' : ''}`}
+                            key={`${image.url}-${index}`}
+                              draggable
+                              onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(index)); setDragging({ productId: null, index, isNew: true }) }}
+                              onDragEnd={() => setDragging(null)}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => {
+                                const from = parseInt(e.dataTransfer.getData('text/plain'), 10)
+                                if (!Number.isNaN(from)) reorderNewProductImages(from, index)
+                              }}
+                          >
+                            <img src={image.url} alt={image.alt || newProduct.name} />
+                            <button
+                              type="button"
+                              className="image-remove-btn"
+                              onClick={() => setNewProduct((prev) => {
+                                const imagesList = (prev.images || []).filter((_, i) => i !== index)
+                                const mainImage = prev.mainImage === image.url ? (imagesList[0]?.url || '') : prev.mainImage
+                                return { ...prev, images: imagesList, mainImage }
+                              })}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )
+                      })
+                    : (
+                        <span className="muted">Sin fotos cargadas</span>
+                      )}
                 </div>
                 <span className="image-editor-note">Fotos cargadas como miniaturas. Agrega URLs externas solo si las necesitas.</span>
                 <AdminField label="URLs externas">
@@ -739,9 +847,6 @@ export default function AdminDashboardPage() {
                       }}
                     />
                   </label>
-                  <button type="button" className="btn-alt" onClick={() => setNewProduct((prev) => ({ ...prev, images: [] }))}>
-                    Limpiar fotos
-                  </button>
                 </div>
               </div>
               <div className="admin-form-grid">
@@ -773,4 +878,3 @@ export default function AdminDashboardPage() {
     </div>
   )
 }
-
