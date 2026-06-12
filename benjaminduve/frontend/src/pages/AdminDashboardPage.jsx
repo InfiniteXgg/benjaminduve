@@ -554,18 +554,18 @@ export default function AdminDashboardPage() {
                           {(product.images || []).length > 0
                             ? product.images.map((image, index) => {
                                 return (
-                                  <div
-                                    className={`product-image-preview relative group ${(dragging && !dragging.isNew && dragging.productId === product.id && dragging.index === index) ? 'is-dragging' : ''}`}
-                                    key={`${image.url}-${index}`}
-                                      draggable
-                                      onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(index)); setDragging({ productId: product.id, index, isNew: false }) }}
-                                      onDragEnd={() => setDragging(null)}
-                                      onDragOver={(e) => e.preventDefault()}
-                                      onDrop={(e) => {
-                                        const from = parseInt(e.dataTransfer.getData('text/plain'), 10)
-                                        if (!Number.isNaN(from)) reorderProductImages(product.id, from, index)
-                                      }}
-                                  >
+                                    <div
+                                      className={`product-image-preview relative group ${(dragging && !dragging.isNew && dragging.productId === product.id && dragging.index === index) ? 'is-dragging' : ''}`}
+                                      key={`${image.url}-${index}`}
+                                       draggable
+                                       onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(index)); setDragging({ productId: product.id, index, isNew: false }) }}
+                                       onDragEnd={() => setDragging(null)}
+                                       onDragOver={(e) => e.preventDefault()}
+                                       onDrop={(e) => {
+                                         const from = parseInt(e.dataTransfer.getData('text/plain'), 10)
+                                          if (!Number.isNaN(from)) reorderProductImages(product.id, from, index)
+                                        }}
+                                    >
                                     <img src={image.url} alt={image.alt || product.name} />
                                     <button
                                       type="button"
