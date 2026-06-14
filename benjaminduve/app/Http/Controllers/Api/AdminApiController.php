@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\User;
 use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
@@ -199,6 +200,25 @@ class AdminApiController extends Controller
 
         return response()->json([
             'message' => 'Producto eliminado.',
+        ]);
+    }
+
+    public function deleteProductImage(Request $request, Product $product, ProductImage $image): JsonResponse
+    {
+        if (!$this->requireAdmin($request)) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        if ((int) $image->product_id !== (int) $product->id) {
+            return response()->json([
+                'message' => 'La imagen no pertenece a este producto.',
+            ], 404);
+        }
+
+        $image->delete();
+
+        return response()->json([
+            'message' => 'Imagen eliminada correctamente.',
         ]);
     }
 

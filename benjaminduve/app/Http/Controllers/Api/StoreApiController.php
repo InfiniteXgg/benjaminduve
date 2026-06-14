@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Rules\ValidRut;
 use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -71,7 +72,7 @@ class StoreApiController extends Controller
                 'customer_name' => ['required', 'string', 'min:3', 'max:255'],
                 'customer_email' => ['required', 'email:rfc,dns', 'max:255'],
                 'billing_document_type' => ['required', 'in:boleta_electronica'],
-                'billing_tax_id' => ['required', 'string', 'min:7', 'max:40', 'regex:/^[0-9kK.\-]+$/'],
+                'billing_tax_id' => ['required', 'string', new ValidRut],
                 'billing_address' => ['required', 'string', 'min:6', 'max:255'],
                 'billing_city' => ['required', 'string', 'min:2', 'max:120'],
                 'billing_contact_phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+\-\s()]{6,40}$/'],
