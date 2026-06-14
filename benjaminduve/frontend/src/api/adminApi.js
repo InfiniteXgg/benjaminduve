@@ -41,6 +41,11 @@ export const adminApi = {
     return data
   },
 
+  async deleteProductImage(productSlug, imageId) {
+    const { data } = await api.delete(`/admin/products/${productSlug}/images/${imageId}`)
+    return data
+  },
+
   async listOrders(params = {}) {
     const { data } = await api.get('/admin/orders', { params })
     return data

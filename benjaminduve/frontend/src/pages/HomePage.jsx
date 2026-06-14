@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
+import HeroCarousel from '../components/HeroCarousel'
 import NoticeBanner from '../components/NoticeBanner'
 import { storeApi } from '../api/storeApi'
 import { useCart } from '../context/CartContext'
@@ -34,6 +35,7 @@ function productImages(product) {
 export default function HomePage() {
   const [params, setParams] = useSearchParams()
   const [products, setProducts] = useState([])
+  const [meta, setMeta] = useState({ currentPage: 1, lastPage: 1 })
   const [loading, setLoading] = useState(true)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [resultsAnimationKey, setResultsAnimationKey] = useState(0)
@@ -43,6 +45,7 @@ export default function HomePage() {
   const [searchPanelOpen, setSearchPanelOpen] = useState(false)
   const [searchPanelClosing, setSearchPanelClosing] = useState(false)
   const [searchPanelCloseTimeout, setSearchPanelCloseTimeout] = useState(null)
+  const searchPanelRef = useRef(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [detailQuantity, setDetailQuantity] = useState(1)
@@ -65,6 +68,10 @@ export default function HomePage() {
       .then((response) => {
         if (!isMounted) return
         setProducts(response.data || [])
+        setMeta({
+          currentPage: response.meta?.current_page || 1,
+          lastPage: response.meta?.last_page || 1,
+        })
         setResultsAnimationKey((current) => current + 1)
       })
       .catch((error) => {
@@ -135,7 +142,12 @@ export default function HomePage() {
     }
   }
 
-  const handleSearchInputBlur = () => {
+  const handleSearchInputBlur = (event) => {
+    const panel = searchPanelRef.current
+    if (panel && event.relatedTarget && panel.contains(event.relatedTarget)) {
+      return
+    }
+
     const timeout = window.setTimeout(() => {
       closeSearchPanel()
     }, 180)
@@ -144,6 +156,24 @@ export default function HomePage() {
 
   const handleSearchInputFocus = () => {
     if (searchPanelCloseTimeout) clearTimeout(searchPanelCloseTimeout)
+  }
+
+  useEffect(() => {
+    if (!searchPanelOpen) return undefined
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') closeSearchPanel()
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [searchPanelOpen])
+
+  const goToPage = (nextPage) => {
+    const next = new URLSearchParams(params)
+    if (search) next.set('q', search)
+    next.set('page', String(nextPage))
+    setParams(next)
   }
 
   const showInitialLoading = loading && !hasLoadedOnce
@@ -201,8 +231,20 @@ export default function HomePage() {
     <div className="app-shell">
       <PublicHeader onSearchClick={toggleSearchPanel} />
       {searchPanelOpen && (
-        <div className={`catalog-search-layer ${searchPanelClosing ? 'is-closing' : 'is-open'}`} onClick={closeSearchPanel} role="presentation">
-          <section className="catalog-search-panel" role="dialog" aria-label="Buscar productos" onClick={(e) => e.stopPropagation()}>
+        <div className={`catalog-search-layer ${searchPanelClosing ? 'is-closing' : 'is-open'}`} role="presentation">
+          <button
+            type="button"
+            className="catalog-search-backdrop"
+            aria-label="Cerrar busqueda"
+            onClick={closeSearchPanel}
+          />
+          <section
+            ref={searchPanelRef}
+            className="catalog-search-panel"
+            role="dialog"
+            aria-label="Buscar productos"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="catalog-search-content">
               <span className="muted">Buscar en catalogo</span>
               <input
@@ -313,6 +355,7 @@ export default function HomePage() {
           </section>
         </div>
       )}
+      <HeroCarousel />
       <main className="container">
         <NoticeBanner message={notice} tone={noticeTone} />
 
@@ -322,7 +365,7 @@ export default function HomePage() {
           <section className="panel">No hay productos disponibles.</section>
         ) : (
           <>
-            <section className="grid catalog-results" key={resultsAnimationKey}>
+            <section id="catalogo" className="grid catalog-results" key={resultsAnimationKey}>
               {products.map((product) => (
                 <article key={product.id} className="card catalog-card">
                   <button
@@ -342,6 +385,29 @@ export default function HomePage() {
                 </article>
               ))}
             </section>
+            {meta.lastPage > 1 && (
+              <nav className="pagination catalog-pagination" aria-label="Paginacion del catalogo">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  disabled={meta.currentPage <= 1}
+                  onClick={() => goToPage(meta.currentPage - 1)}
+                >
+                  ← Anterior
+                </button>
+                <span className="pagination-info">
+                  Página {meta.currentPage} de {meta.lastPage}
+                </span>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  disabled={meta.currentPage >= meta.lastPage}
+                  onClick={() => goToPage(meta.currentPage + 1)}
+                >
+                  Siguiente →
+                </button>
+              </nav>
+            )}
           </>
         )}
       </main>
