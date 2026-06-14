@@ -1829,3 +1829,20 @@ outes/api.php):
 - Bugs encontrados y corregidos en el mismo sprint:
   - BUG-001: validación RUT inconsistente en CheckoutPage → corregido.
   - BUG-002: autoplay del carrusel no respetaba `prefers-reduced-motion` → corregido.
+
+### 2026-06-13 — Rediseño visual premium
+- Rediseño completo de la UI pública según brief de lujo minimalista:
+  - Paleta: fondo #0a0a0a, texto #f5f5f0, bordes #262626.
+  - Tipografía: Cormorant Garamond (serif, display) + Inter (sans, body).
+  - Header: sticky, delgado, logo DUD centrado, íconos sin borde (búsqueda, carrito, toggle, Instagram).
+  - Hero/Carrusel: 80vh desktop / 60vh mobile, 3 slides con imágenes reales (bolsonegro, bolsomulti, bolsorosa), eyebrow uppercase, título serif grande, CTA subrayado, autoplay 5s, flechas discretas, dots, crossfade.
+  - Grilla catálogo: 4 cols desktop / 3 tablet / 2 mobile, cards oscuras con aspect-ratio 4:5, hover con scale + glow, nombre uppercase con letter-spacing.
+  - Footer minimal: Instagram + ©.
+- Resolución de conflictos CSS entre styles.css (legacy/base) e index.css (Vite):
+  - styles.css limpiado de definiciones duplicadas (header, grid, cards).
+  - Orden de carga: styles.css primero (base), luego Vite inyecta index.css + design-tokens.css.
+- Imágenes de producto subidas a `frontend/public/` (14 archivos JPEG).
+- Pendientes identificados para siguiente sprint:
+  - Pasarela de pago real (actualmente placeholder).
+  - Sistema de cuentas de usuario (registro, login, historial de pedidos, direcciones).
+  - Revisión de bugs post-rediseño.

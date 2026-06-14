@@ -1,10 +1,8 @@
 .hero-carousel {
   position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  height: var(--layout-hero-height-mobile);
-  min-height: var(--layout-hero-min-height);
-  max-height: var(--layout-hero-max-height);
+  width: 100%;
+  height: var(--layout-hero-height-mobile, 60vh);
+  min-height: var(--layout-hero-min-height, 320px);
   overflow: hidden;
   outline: none;
 }
@@ -22,8 +20,6 @@
 .hero-carousel-slide {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
   background: var(--hero-slide-gradient);
   opacity: 0;
   transition: var(--transition-carousel-slide);
@@ -36,6 +32,15 @@
   z-index: 1;
 }
 
+.hero-carousel-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
 .hero-carousel-overlay {
   position: absolute;
   inset: 0;
@@ -44,51 +49,57 @@
 }
 
 .hero-carousel-content {
-  position: relative;
+  position: absolute;
+  left: 0;
+  bottom: 0;
   z-index: 1;
   display: grid;
   gap: var(--space-4);
-  justify-items: center;
-  text-align: center;
-  padding: var(--space-6) var(--layout-container-padding);
-  max-width: var(--layout-container-max);
+  justify-items: start;
+  text-align: left;
+  padding: var(--space-12) var(--layout-container-padding);
+  max-width: min(640px, 90vw);
+}
+
+.hero-carousel-eyebrow {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-eyebrow);
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .hero-carousel-content h2 {
   margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 300;
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-tight);
-  color: var(--token-text-inverse);
-}
-
-.hero-carousel-content p {
-  margin: 0;
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-gray-300);
-  max-width: 36ch;
+  color: #f5f5f0;
 }
 
 .hero-carousel-cta {
   margin-top: var(--space-2);
-  min-height: var(--layout-tap-target-min);
-  padding: var(--space-3) var(--space-6);
+  padding: 0;
   border: 0;
-  border-radius: var(--radius-md);
-  background: var(--hero-cta-bg);
-  color: var(--hero-cta-color);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
+  border-bottom: 1px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-wide);
+  text-underline-offset: 4px;
   cursor: pointer;
-  transition: var(--transition-colors), var(--transition-transform);
+  transition: opacity var(--duration-normal) var(--ease-default);
 }
 
 .hero-carousel-cta:hover,
 .hero-carousel-cta:focus-visible {
-  background: var(--color-accent-hover);
-  transform: translateY(-1px);
+  opacity: 0.75;
 }
 
 .hero-carousel-control {
@@ -101,21 +112,22 @@
   min-width: var(--hero-control-size);
   min-height: var(--hero-control-size);
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-full);
   background: var(--token-bg-control);
   color: var(--token-text-inverse);
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   line-height: 1;
   cursor: pointer;
-  box-shadow: var(--shadow-hero-control);
-  transition: var(--transition-colors), var(--transition-opacity);
+  opacity: 0.5;
+  transition: var(--transition-colors), opacity var(--duration-normal) var(--ease-default);
 }
 
 .hero-carousel-control:hover,
 .hero-carousel-control:focus-visible {
+  opacity: 1;
   background: var(--token-bg-control-hover);
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .hero-carousel-control--prev {
@@ -147,45 +159,25 @@
   border-radius: var(--radius-full);
   background: var(--hero-dot-inactive);
   cursor: pointer;
-  transition: var(--transition-colors), transform var(--duration-normal) var(--ease-in-out);
+  transition: var(--transition-colors), opacity var(--duration-normal) var(--ease-default);
 }
 
 .hero-carousel-dot.is-active {
-  width: var(--hero-dot-size-active);
-  height: var(--hero-dot-size-active);
-  min-width: var(--hero-dot-size-active);
-  min-height: var(--hero-dot-size-active);
   background: var(--hero-dot-active);
 }
 
 .hero-carousel-dot:hover,
 .hero-carousel-dot:focus-visible {
-  background: var(--color-accent-muted);
-}
-
-.hero-carousel-dot.is-active:hover,
-.hero-carousel-dot.is-active:focus-visible {
-  background: var(--color-accent-hover);
+  opacity: 0.85;
 }
 
 @media (min-width: 768px) {
   .hero-carousel {
-    height: var(--layout-hero-height-desktop);
+    height: var(--layout-hero-height-desktop, 80vh);
   }
 
-  .hero-carousel-content h2 {
-    font-size: var(--font-size-hero);
-  }
-
-  .hero-carousel-content p {
-    font-size: var(--font-size-lg);
-  }
-
-  .hero-carousel-control {
-    width: var(--hero-control-size-lg);
-    height: var(--hero-control-size-lg);
-    min-width: var(--hero-control-size-lg);
-    min-height: var(--hero-control-size-lg);
+  .hero-carousel-content {
+    padding: var(--space-16) var(--layout-container-padding);
   }
 
   .hero-carousel-control--prev {
@@ -200,10 +192,5 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-carousel-slide {
     transition: none;
-  }
-
-  .hero-carousel-cta:hover,
-  .hero-carousel-cta:focus-visible {
-    transform: none;
   }
 }

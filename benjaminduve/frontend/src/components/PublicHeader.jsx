@@ -9,10 +9,7 @@ export default function PublicHeader({ onSearchClick = null }) {
   return (
     <header className="top-header">
       <div className="header-wrap">
-        <div className="brand-actions">
-          <a href="/" className="brand-link" aria-label="Ir al home">
-            <BrandLogo />
-          </a>
+        <div className="header-left">
           {onSearchClick && (
             <button
               type="button"
@@ -28,12 +25,21 @@ export default function PublicHeader({ onSearchClick = null }) {
             </button>
           )}
         </div>
-        <nav className="header-nav">
-          <a href="/" className="nav-btn">
-            HOME
+
+        <div className="header-center">
+          <a href="/" className="brand-link" aria-label="Ir al home">
+            <BrandLogo />
           </a>
-          <NavLink to="/carrito" className="nav-btn cart-btn">
-            Carrito
+        </div>
+
+        <div className="header-right">
+          <NavLink to="/carrito" className="nav-btn cart-btn icon-btn" aria-label="Carrito">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9">
+              <path d="M6 6h15l-1.5 9h-12z"></path>
+              <path d="M6 6L5 3H2"></path>
+              <circle cx="9" cy="20" r="1.2"></circle>
+              <circle cx="18" cy="20" r="1.2"></circle>
+            </svg>
             {distinctCount > 0 && <span className="cart-badge">{distinctCount}</span>}
           </NavLink>
           <ThemeToggle />
@@ -51,7 +57,7 @@ export default function PublicHeader({ onSearchClick = null }) {
               <circle cx="17.6" cy="6.4" r="1.1"></circle>
             </svg>
           </a>
-        </nav>
+        </div>
       </div>
     </header>
   )

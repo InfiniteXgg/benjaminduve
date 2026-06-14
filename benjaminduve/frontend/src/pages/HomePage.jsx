@@ -364,27 +364,30 @@ export default function HomePage() {
         ) : products.length === 0 ? (
           <section className="panel">No hay productos disponibles.</section>
         ) : (
-          <>
-            <section id="catalogo" className="grid catalog-results" key={resultsAnimationKey}>
+          <section className="catalog-section">
+            <h2 className="catalog-section-title">Catálogo</h2>
+            <div id="catalogo" className="grid catalog-results" key={resultsAnimationKey}>
               {products.map((product) => (
                 <article key={product.id} className="card catalog-card">
-                  <button
-                    type="button"
-                    className="catalog-card-image"
-                    onClick={() => openProductModal(product)}
-                    aria-label={`Ver detalle de ${product.name}`}
-                  >
-                    {product.images?.[0]?.url ? (
-                      <img src={product.images[0].url} alt={product.images[0].alt || product.name} />
-                    ) : (
-                      <span>{product.name}</span>
-                    )}
-                  </button>
+                  <div className="catalog-card-media">
+                    <button
+                      type="button"
+                      className="catalog-card-image"
+                      onClick={() => openProductModal(product)}
+                      aria-label={`Ver detalle de ${product.name}`}
+                    >
+                      {product.images?.[0]?.url ? (
+                        <img src={product.images[0].url} alt={product.images[0].alt || product.name} />
+                      ) : (
+                        <span>{product.name}</span>
+                      )}
+                    </button>
+                  </div>
                   <h3>{product.name}</h3>
                   <p className="price">{formatCurrency(product.price)}</p>
                 </article>
               ))}
-            </section>
+            </div>
             {meta.lastPage > 1 && (
               <nav className="pagination catalog-pagination" aria-label="Paginacion del catalogo">
                 <button
@@ -408,9 +411,17 @@ export default function HomePage() {
                 </button>
               </nav>
             )}
-          </>
+          </section>
         )}
       </main>
+      <footer className="site-footer">
+        <div className="footer-content">
+          <a href="https://instagram.com/benjaminduve" target="_blank" rel="noopener noreferrer">
+            @benjaminduve
+          </a>
+          <span>© Benjamin Duve 2026</span>
+        </div>
+      </footer>
     </div>
   )
 }

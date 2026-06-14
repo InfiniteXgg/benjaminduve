@@ -4,21 +4,27 @@ import './HeroCarousel.css'
 const SLIDES = [
   {
     id: 'invierno',
-    title: 'Colección Invierno 2026',
-    subtitle: 'Piezas exclusivas para la temporada',
-    gradient: 'linear-gradient(135deg, #0a1628 0%, #050810 45%, #000000 100%)',
+    eyebrow: 'NUEVA COLECCIÓN',
+    title: 'Invierno 2026',
+    cta: 'Ver catálogo →',
+    gradient: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%)',
+    image: '/bolsonegro.jpeg',
   },
   {
     id: 'bolsos',
-    title: 'Bolsos & Mochilas Personalizados',
-    subtitle: 'Diseño a tu medida con acabados premium',
-    gradient: 'linear-gradient(135deg, #1a0a28 0%, #120818 45%, #000000 100%)',
+    eyebrow: 'HECHO A MANO',
+    title: 'Bolsos & Mochilas',
+    cta: 'Descubrir →',
+    gradient: 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)',
+    image: '/bolsomulti.jpeg',
   },
   {
     id: 'artesanal',
-    title: 'Calidad Artesanal Chilena',
-    subtitle: 'Hecho a mano con materiales seleccionados',
-    gradient: 'linear-gradient(135deg, #2a1f0a 0%, #151008 45%, #000000 100%)',
+    eyebrow: 'EDICIÓN LIMITADA',
+    title: 'Calidad Artesanal',
+    cta: 'Explorar →',
+    gradient: 'linear-gradient(135deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.7) 100%)',
+    image: '/bolsorosa.jpeg',
   },
 ]
 
@@ -103,12 +109,20 @@ export default function HeroCarousel() {
             style={{ '--hero-slide-gradient': slide.gradient }}
             aria-hidden={index !== activeIndex}
           >
+            {slide.image && (
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className="hero-carousel-bg"
+                loading={index === 0 ? 'eager' : 'lazy'}
+              />
+            )}
             <div className="hero-carousel-overlay" aria-hidden="true" />
             <div className="hero-carousel-content">
+              <span className="hero-carousel-eyebrow">{slide.eyebrow}</span>
               <h2>{slide.title}</h2>
-              <p>{slide.subtitle}</p>
               <button type="button" className="hero-carousel-cta" onClick={scrollToCatalog}>
-                Ver catálogo
+                {slide.cta}
               </button>
             </div>
           </article>
