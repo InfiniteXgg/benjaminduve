@@ -4,7 +4,7 @@ import PublicHeader from '../components/PublicHeader'
 import NoticeBanner from '../components/NoticeBanner'
 import { useCart } from '../context/CartContext'
 import { storeApi } from '../api/storeApi'
-import { formatCurrency, readApiError } from '../utils'
+import { formatCurrency, readApiError, validateRut } from '../utils'
 
 const RECEIPT_DRAFT_KEY = 'bdv_receipt_draft_v1'
 const ORDER_CART_RESTORE_KEY = 'bdv_order_cart_restore_v1'
@@ -84,10 +84,10 @@ export default function CheckoutPage() {
       return
     }
 
-    const taxIdOk = /^[0-9kK.-]{7,40}$/.test(sanitizedDraft.billing_tax_id)
-    if (!taxIdOk) {
+    const rutResult = validateRut(sanitizedDraft.billing_tax_id)
+    if (!rutResult.valid) {
       setNoticeTone('error')
-      setNotice('El RUT/Documento no tiene un formato valido.')
+      setNotice(rutResult.message)
       return
     }
 

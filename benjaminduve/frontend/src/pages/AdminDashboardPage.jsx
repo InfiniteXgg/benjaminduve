@@ -361,16 +361,30 @@ export default function AdminDashboardPage() {
     const product = products.find((item) => item.id === productId)
     if (!product) return
 
-    const imagesList = (product.images || []).filter((_, index) => index !== indexToRemove)
-    const mainImage = product.mainImage === product.images?.[indexToRemove]?.url ? (imagesList[0]?.url || '') : product.mainImage
+    const image = product.images?.[indexToRemove]
+    if (!image) return
 
+    if (image.id && product.slug && !isEmbeddedImageSource(image.url)) {
+      try {
+        const response = await adminApi.deleteProductImage(product.slug, image.id)
+        showNotice(response.message || 'Imagen eliminada correctamente.')
+        await loadProducts()
+        return
+      } catch (error) {
+        showNotice(readApiError(error), 'error')
+        return
+      }
+    }
+
+    const imagesList = (product.images || []).filter((_, index) => index !== indexToRemove)
+    const mainImage = product.mainImage === image.url ? (imagesList[0]?.url || '') : product.mainImage
     const updatedProduct = { ...product, images: imagesList, mainImage }
 
     setProducts((prev) => prev.map((item) => (
       item.id === productId ? updatedProduct : item
     )))
 
-    if (updatedProduct.slug) {
+    if (updatedProduct.slug && !isEmbeddedImageSource(image.url)) {
       await onUpdateProduct(updatedProduct)
     }
   }
@@ -570,12 +584,8 @@ export default function AdminDashboardPage() {
                                     <button
                                       type="button"
                                       className="image-remove-btn"
-                                      onClick={() => setProducts((prev) => prev.map((p) => {
-                                        if (p.id !== product.id) return p
-                                        const imagesList = (p.images || []).filter((_, i) => i !== index)
-                                        const mainImage = p.mainImage === image.url ? (imagesList[0]?.url || '') : p.mainImage
-                                        return { ...p, images: imagesList, mainImage }
-                                      }))}
+                                      aria-label={`Eliminar imagen ${index + 1}`}
+                                      onClick={() => removeProductImage(product.id, index)}
                                     >
                                       ×
                                     </button>
@@ -642,9 +652,10 @@ export default function AdminDashboardPage() {
                 </article>
               ))}
             </div>
-            <div className="pagination">
+            <nav className="pagination catalog-pagination" aria-label="Paginacion de productos">
               <button
                 type="button"
+                className="pagination-btn"
                 disabled={productPage <= 1}
                 onClick={async () => {
                   const next = Math.max(1, productPage - 1)
@@ -652,11 +663,14 @@ export default function AdminDashboardPage() {
                   await loadProducts({ page: next })
                 }}
               >
-                Anterior
+                ← Anterior
               </button>
-              <span>Pagina {productMeta.current_page || 1} de {productMeta.last_page || 1}</span>
+              <span className="pagination-info">
+                Página {productMeta.current_page || productPage} de {productMeta.last_page || 1}
+              </span>
               <button
                 type="button"
+                className="pagination-btn"
                 disabled={productPage >= (productMeta.last_page || 1)}
                 onClick={async () => {
                   const next = Math.min(productMeta.last_page || 1, productPage + 1)
@@ -664,9 +678,9 @@ export default function AdminDashboardPage() {
                   await loadProducts({ page: next })
                 }}
               >
-                Siguiente
+                Siguiente →
               </button>
-            </div>
+            </nav>
           </section>
         ) : (
           <section className="panel">
@@ -738,9 +752,10 @@ export default function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="pagination">
+            <nav className="pagination catalog-pagination" aria-label="Paginacion de pedidos">
               <button
                 type="button"
+                className="pagination-btn"
                 disabled={orderPage <= 1}
                 onClick={async () => {
                   const next = Math.max(1, orderPage - 1)
@@ -748,11 +763,14 @@ export default function AdminDashboardPage() {
                   await loadOrders({ page: next })
                 }}
               >
-                Anterior
+                ← Anterior
               </button>
-              <span>Pagina {orderMeta.current_page || 1} de {orderMeta.last_page || 1}</span>
+              <span className="pagination-info">
+                Página {orderMeta.current_page || orderPage} de {orderMeta.last_page || 1}
+              </span>
               <button
                 type="button"
+                className="pagination-btn"
                 disabled={orderPage >= (orderMeta.last_page || 1)}
                 onClick={async () => {
                   const next = Math.min(orderMeta.last_page || 1, orderPage + 1)
@@ -760,9 +778,9 @@ export default function AdminDashboardPage() {
                   await loadOrders({ page: next })
                 }}
               >
-                Siguiente
+                Siguiente →
               </button>
-            </div>
+            </nav>
           </section>
         )}
       </main>

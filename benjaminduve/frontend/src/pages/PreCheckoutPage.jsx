@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
 import NoticeBanner from '../components/NoticeBanner'
 import { useCart } from '../context/CartContext'
-import { formatCurrency } from '../utils'
+import { formatCurrency, validateRut } from '../utils'
 
 const RECEIPT_DRAFT_KEY = 'bdv_receipt_draft_v1'
 
@@ -33,6 +33,7 @@ export default function PreCheckoutPage() {
   const [draft, setDraft] = useState(loadDraft)
   const [notice, setNotice] = useState('')
   const [noticeTone, setNoticeTone] = useState('info')
+  const [rutError, setRutError] = useState('')
 
   useEffect(() => {
     localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft))
@@ -54,6 +55,18 @@ export default function PreCheckoutPage() {
     )
   }, [draft])
 
+  const validateTaxId = (value = draft.billing_tax_id) => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setRutError('')
+      return true
+    }
+
+    const result = validateRut(trimmed)
+    setRutError(result.valid ? '' : result.message)
+    return result.valid
+  }
+
   const continuePurchase = () => {
     if (items.length === 0) {
       setNoticeTone('error')
@@ -74,10 +87,10 @@ export default function PreCheckoutPage() {
       return
     }
 
-    const taxIdOk = /^[0-9kK.-]{7,40}$/.test(draft.billing_tax_id.trim())
+    const taxIdOk = validateTaxId()
     if (!taxIdOk) {
       setNoticeTone('error')
-      setNotice('El RUT/Documento no tiene un formato valido.')
+      setNotice('El RUT ingresado no es válido.')
       return
     }
 
@@ -132,10 +145,16 @@ export default function PreCheckoutPage() {
                     <div className="stack">
                       <input
                         value={draft.billing_tax_id}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, billing_tax_id: e.target.value }))}
+                        onChange={(e) => {
+                          setDraft((prev) => ({ ...prev, billing_tax_id: e.target.value }))
+                          if (rutError) setRutError('')
+                        }}
+                        onBlur={() => validateTaxId()}
                         placeholder="RUT / Documento"
+                        aria-invalid={Boolean(rutError)}
                       />
                       <p className="muted">Formato: 12345678-9 o 12.345.678-9</p>
+                      {rutError && <p className="field-error">{rutError}</p>}
                     </div>
                   </div>
                   <div className="triple">
