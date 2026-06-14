@@ -83,16 +83,16 @@ Llevar la app a estado "casi final": rediseño de home con hero/carrusel + grill
 
 ## Criterios de Aceptación
 
-- [ ] Home con hero/carrusel grande arriba + grilla abajo, tema negro coherente, responsive.
-- [ ] Cero activos de marca de terceros.
-- [ ] Paginación visible y funcional (público 9/pág y admin 12/pág).
-- [ ] RUT validado con dígito verificador módulo 11 en front y back.
-- [ ] Barra de búsqueda se oculta al perder selección.
-- [ ] Imágenes individuales eliminables en admin.
-- [ ] Pasarela de pago abstraída como interfaz placeholder limpia.
-- [ ] Controladores Blade legacy eliminados sin romper rutas.
-- [ ] Todos los flujos existentes pasan regression.
-- [ ] Entregables: PLAN.md, design-spec.md, QA-plan.md, QA-report.md.
+- [x] Home con hero/carrusel grande arriba + grilla abajo, tema negro coherente, responsive.
+- [x] Cero activos de marca de terceros.
+- [x] Paginación visible y funcional (público 9/pág y admin 12/pág).
+- [x] RUT validado con dígito verificador módulo 11 en front y back.
+- [x] Barra de búsqueda se oculta al perder selección.
+- [x] Imágenes individuales eliminables en admin.
+- [x] Pasarela de pago abstraída como interfaz placeholder limpia.
+- [x] Controladores Blade legacy eliminados sin romper rutas.
+- [x] Todos los flujos existentes pasan regression.
+- [x] Entregables: PLAN.md, design-spec.md, QA-plan.md, QA-report.md.
 
 ---
 

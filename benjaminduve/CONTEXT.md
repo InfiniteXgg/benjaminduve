@@ -1796,3 +1796,36 @@ outes/api.php):
   - `docker compose exec -T frontend npm run lint` -> OK.
   - `docker compose exec -T frontend npm run build` -> OK.
   - `php -l app/Http/Controllers/Api/AdminApiController.php` -> OK.
+
+### 2026-06-13 — Sprint "Versión casi final"
+- Ejecución multi-agente orquestada (PM, Diseñador UI/UX, Backend, Frontend, QA).
+- Ramas: `feature/backend-fixes` y `feature/frontend-redesign`, mergeadas a `development`.
+
+#### Backend (feature/backend-fixes)
+- **Validación RUT chileno**: nueva regla `app/Rules/ValidRut.php` con algoritmo módulo 11 (serie 2-7), aplicada en `createOrder` sobre `billing_tax_id`.
+- **Endpoint eliminación de imágenes**: `DELETE /api/admin/products/{product}/images/{image}` con verificación de ownership, protegido por Sanctum.
+- **Pasarela de pago abstracta**: `app/Contracts/PaymentGatewayInterface.php` + `app/Services/PlaceholderPaymentGateway.php` + `app/Services/PaymentResult.php`. Binding registrado en `AppServiceProvider`.
+- **Limpieza legacy**: eliminados controladores Blade (`HomeController`, `CartController`, `AdminController`, `AuthController`) y vistas Blade no usadas (`admin/`, `home/`, `store/`, `partials/`, `login.blade.php`, `welcome.blade.php`). Verificado que no había rutas activas dependientes.
+
+#### Frontend (feature/frontend-redesign)
+- **HeroCarousel**: nuevo componente (`components/HeroCarousel.jsx` + `.css`). 3 slides con gradientes CSS, autoplay 5s (respeta `prefers-reduced-motion`), pausa hover/focus, flechas + dots, CTA "Ver catálogo" con scroll suave a `#catalogo`, accesible (ARIA, teclado), responsive (50vh mobile, 70vh desktop).
+- **Design tokens**: `frontend/src/design-tokens.css` con paleta monocromática + acento dorado, tipografía, spacing, sombras, transiciones. Importado en `index.css`.
+- **Paginación visible**: controles "Anterior / Siguiente" + indicador de página en HomePage (público, 9/pág) y AdminDashboardPage (12/pág productos, pedidos).
+- **Fix búsqueda**: overlay se cierra al perder foco (blur), click fuera, y tecla Escape.
+- **Validación RUT frontend**: función `validateRut()` en `utils.js` (módulo 11), aplicada en `PreCheckoutPage` (onBlur + submit) y `CheckoutPage`.
+- **Eliminación individual de imágenes**: `adminApi.deleteProductImage()` + botón X en cada imagen del editor de productos en admin.
+
+#### Documentación generada
+- `PLAN.md`: plan de ejecución con fases, tareas, responsables y criterios de aceptación.
+- `design-spec.md`: especificación del rediseño (hero, grilla, responsive, accesibilidad).
+- `QA-plan.md`: 63 casos de prueba organizados por categoría.
+- `QA-report.md`: resultados (59 PASS, 1 FAIL corregido, 1 observación menor).
+- Archivos de rol de agentes en `.cursor/agents/` (no versionados por .gitignore).
+
+#### Resultado QA
+- Build frontend: OK (vite build exitoso).
+- Rutas Laravel: OK (route:list sin errores).
+- Migración `product_images`: aplicada.
+- Bugs encontrados y corregidos en el mismo sprint:
+  - BUG-001: validación RUT inconsistente en CheckoutPage → corregido.
+  - BUG-002: autoplay del carrusel no respetaba `prefers-reduced-motion` → corregido.
