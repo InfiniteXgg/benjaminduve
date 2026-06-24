@@ -60,5 +60,10 @@ export const adminApi = {
     const { data } = await api.post(`/admin/orders/${orderId}/reject`)
     return data
   },
+
+  async deleteOrder(orderId) {
+    const { data } = await api.delete(`/admin/orders/${orderId}`)
+    return data
+  },
 }
 

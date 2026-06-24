@@ -118,13 +118,8 @@ export default function CheckoutPage() {
       localStorage.setItem('latest_order', JSON.stringify({ id: order.id, token: order.public_token }))
       navigate(`/pedido/${order.id}?token=${encodeURIComponent(order.public_token)}`)
     } catch (error) {
-      const isValidationError = Number(error?.response?.status) === 422
       setNoticeTone('error')
-      setNotice(
-        isValidationError
-          ? 'Por favor usa el formato recomendado para cada dato.'
-          : readApiError(error),
-      )
+      setNotice(readApiError(error))
     } finally {
       setSubmitting(false)
     }

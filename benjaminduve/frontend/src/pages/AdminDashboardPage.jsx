@@ -156,6 +156,8 @@ export default function AdminDashboardPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [orderPage, setOrderPage] = useState(1)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [removingOrderId, setRemovingOrderId] = useState('')
 
   const token = localStorage.getItem('admin_token')
 
@@ -446,6 +448,23 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const onDeleteOrder = async (orderId) => {
+    setRemovingOrderId(orderId)
+
+    await new Promise((resolve) => setTimeout(resolve, 220))
+
+    try {
+      const response = await adminApi.deleteOrder(orderId)
+      showNotice(response.message || 'Pedido eliminado correctamente.')
+      setSelectedOrder(null)
+      await Promise.all([loadOrders(), loadSummary()])
+    } catch (error) {
+      showNotice(readApiError(error), 'error')
+    } finally {
+      setRemovingOrderId('')
+    }
+  }
+
   const editableProducts = useMemo(
     () => products.map((product) => ({ ...product })),
     [products],
@@ -722,7 +741,7 @@ export default function AdminDashboardPage() {
                 <span>Accion</span>
               </div>
               {orders.map((order) => (
-                <article className="orders-row" key={order.id}>
+                <article className="orders-row" key={order.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedOrder(order)}>
                   <span className="mono">#{order.id}</span>
                   <span>
                     <strong>{order.customer_name}</strong>
@@ -738,7 +757,7 @@ export default function AdminDashboardPage() {
                   <span><strong>{formatCurrency(order.total)}</strong></span>
                   <span>
                     {order.admin_review_status === 'pending' && order.status === 'pending' ? (
-                      <div className="card-actions">
+                      <div className="card-actions" onClick={(e) => e.stopPropagation()}>
                         <button type="button" onClick={() => onOrderDecision(order.id, 'accept')}>Aceptar</button>
                         <button type="button" className="btn-danger" onClick={() => onOrderDecision(order.id, 'reject')}>Rechazar</button>
                       </div>
@@ -784,6 +803,61 @@ export default function AdminDashboardPage() {
           </section>
         )}
       </main>
+
+      {tab === 'orders' && selectedOrder && (
+        <div className="modal-overlay admin-create-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedOrder(null)}>
+          <section className="modal-card admin-create-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Detalles del Pedido #{selectedOrder.id}</h3>
+            <div className="stack">
+              <div className="admin-field">
+                <span><strong>Cliente</strong></span>
+                <span>{selectedOrder.customer_name}</span>
+                <span className="muted">{selectedOrder.customer_email}</span>
+              </div>
+              <div className="admin-field">
+                <span><strong>Estado</strong></span>
+                <span>{selectedOrder.status_label}</span>
+              </div>
+              <div className="admin-field">
+                <span><strong>Revision Administrador</strong></span>
+                <span>{selectedOrder.review_status_label}</span>
+              </div>
+              <div className="admin-field">
+                <span><strong>Pago</strong></span>
+                <span>{selectedOrder.payment_status_label}</span>
+              </div>
+              <div className="admin-field">
+                <span><strong>Total</strong></span>
+                <span>{formatCurrency(selectedOrder.total)}</span>
+              </div>
+              <div className="admin-field">
+                <span><strong>Productos Pedidos</strong></span>
+                <div className="stack">
+                  {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                    selectedOrder.items.map((item) => (
+                      <div className="row-card" key={item.id}>
+                        <span>
+                          <strong>{item.product_name}</strong>
+                          <small>Cantidad: {item.quantity}</small>
+                        </span>
+                        <span><strong>{formatCurrency(item.subtotal)}</strong></span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="muted">Sin productos</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="card-actions">
+              <button type="button" className="btn-danger" onClick={() => onDeleteOrder(selectedOrder.id)} disabled={removingOrderId === selectedOrder.id}>
+                {removingOrderId === selectedOrder.id ? 'Eliminando...' : 'Eliminar Pedido'}
+              </button>
+              <button type="button" className="btn-alt" onClick={() => setSelectedOrder(null)}>Cerrar</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {tab === 'products' && showCreateModal && (
         <div className="modal-overlay admin-create-overlay" role="dialog" aria-modal="true" onClick={() => setShowCreateModal(false)}>

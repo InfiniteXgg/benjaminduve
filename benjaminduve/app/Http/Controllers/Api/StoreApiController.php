@@ -131,7 +131,7 @@ class StoreApiController extends Controller
                 }
 
                 if ($product->stock < $quantity) {
-                    abort(422, 'Stock insuficiente para "' . $product->name . '".');
+                    abort(422, 'Stock insuficiente para "' . $product->name . '". Hay ' . $product->stock . ' unidad(es) disponible(s) pero intentaste comprar ' . $quantity . '.');
                 }
 
                 $subtotal = (float) $product->price * $quantity;
@@ -173,10 +173,6 @@ class StoreApiController extends Controller
                     'unit_price' => $product->price,
                     'subtotal' => $subtotal,
                 ]);
-
-                $previousStock = (int) $product->stock;
-                $product->decrement('stock', $quantity);
-                $this->stockAlerts->notifyAdminsIfNeeded($product->fresh(), $previousStock);
             }
 
             return $order->load('items');
@@ -285,9 +281,12 @@ class StoreApiController extends Controller
         DB::transaction(function () use ($order) {
             $order->load('items.product');
 
-            foreach ($order->items as $item) {
-                if ($item->product) {
-                    $item->product->increment('stock', $item->quantity);
+            // Solo devolver stock si el pedido fue aceptado y pagado
+            if ($order->status === 'paid') {
+                foreach ($order->items as $item) {
+                    if ($item->product) {
+                        $item->product->increment('stock', $item->quantity);
+                    }
                 }
             }
 

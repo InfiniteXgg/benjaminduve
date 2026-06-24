@@ -232,7 +232,7 @@ class AdminApiController extends Controller
         $dateFrom = (string) $request->query('date_from', '');
         $dateTo = (string) $request->query('date_to', '');
 
-        $query = Order::query()->withCount('items');
+        $query = Order::query()->with('items.product')->withCount('items');
 
         if ($search !== '') {
             $query->where(function ($subQuery) use ($search) {
@@ -286,11 +286,24 @@ class AdminApiController extends Controller
             return response()->json(['message' => 'Este pedido aun no tiene pago enviado por el cliente.'], 422);
         }
 
-        $order->update([
-            'status' => 'paid',
-            'payment_status' => 'prototype_paid',
-            'admin_review_status' => 'accepted',
-        ]);
+        DB::transaction(function () use ($order): void {
+            $order->load('items.product');
+
+            // Disminuir stock al aceptar el pedido
+            foreach ($order->items as $item) {
+                if ($item->product) {
+                    $previousStock = (int) $item->product->stock;
+                    $item->product->decrement('stock', $item->quantity);
+                    $this->stockAlerts->notifyAdminsIfNeeded($item->product->fresh(), $previousStock);
+                }
+            }
+
+            $order->update([
+                'status' => 'paid',
+                'payment_status' => 'prototype_paid',
+                'admin_review_status' => 'accepted',
+            ]);
+        });
 
         return response()->json([
             'message' => 'Pedido aceptado por administracion.',
@@ -330,6 +343,32 @@ class AdminApiController extends Controller
         return response()->json([
             'message' => 'Pedido rechazado por administracion.',
             'data' => $this->orderPayload($order->fresh()),
+        ]);
+    }
+
+    public function deleteOrder(Request $request, Order $order): JsonResponse
+    {
+        if (!$this->requireAdmin($request)) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        DB::transaction(function () use ($order): void {
+            $order->load('items.product');
+
+            // Solo devolver stock si el pedido fue aceptado y pagado
+            if ($order->status === 'paid') {
+                foreach ($order->items as $item) {
+                    if ($item->product) {
+                        $item->product->increment('stock', $item->quantity);
+                    }
+                }
+            }
+
+            $order->delete();
+        });
+
+        return response()->json([
+            'message' => 'Pedido eliminado correctamente.',
         ]);
     }
 
@@ -459,6 +498,18 @@ class AdminApiController extends Controller
 
     private function orderPayload(Order $order): array
     {
+        $items = [];
+        if ($order->items) {
+            foreach ($order->items as $item) {
+                $items[] = [
+                    'id' => $item->id,
+                    'product_name' => $item->product_name,
+                    'quantity' => (int) $item->quantity,
+                    'subtotal' => (float) $item->subtotal,
+                ];
+            }
+        }
+
         return [
             'id' => $order->id,
             'customer_name' => $order->customer_name,
@@ -473,6 +524,7 @@ class AdminApiController extends Controller
             'review_status_label' => $this->reviewStatusLabel((string) $order->admin_review_status),
             'total' => (float) $order->total,
             'items_count' => (int) ($order->items_count ?? 0),
+            'items' => $items,
             'created_at' => $order->created_at?->toIso8601String(),
         ];
     }

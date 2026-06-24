@@ -32,5 +32,6 @@ Route::prefix('admin')->group(function () {
         Route::get('/orders', [AdminApiController::class, 'orders']);
         Route::post('/orders/{order}/accept', [AdminApiController::class, 'acceptOrder']);
         Route::post('/orders/{order}/reject', [AdminApiController::class, 'rejectOrder']);
+        Route::delete('/orders/{order}', [AdminApiController::class, 'deleteOrder']);
     });
 });

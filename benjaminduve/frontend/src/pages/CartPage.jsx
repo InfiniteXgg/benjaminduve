@@ -11,6 +11,7 @@ export default function CartPage() {
   const navigate = useNavigate()
   const { items, total, updateItemQuantity, removeItem } = useCart()
   const [notice, setNotice] = useState('')
+  const [noticeTone, setNoticeTone] = useState('info')
   const [removingItems, setRemovingItems] = useState({})
 
   useEffect(() => {
@@ -38,6 +39,14 @@ export default function CartPage() {
         return next
       })
     }, 260)
+  }
+
+  const onUpdateQuantity = (productId, nextQuantity) => {
+    const result = updateItemQuantity(productId, nextQuantity)
+    if (!result.ok) {
+      setNoticeTone('error')
+      setNotice(result.message)
+    }
   }
 
   return (
@@ -68,7 +77,7 @@ export default function CartPage() {
                         type="number"
                         min="1"
                         value={item.quantity}
-                        onChange={(e) => updateItemQuantity(item.id, Number(e.target.value || 1))}
+                        onChange={(e) => onUpdateQuantity(item.id, Number(e.target.value || 1))}
                       />
                       <button type="button" onClick={() => onRemoveItem(item.id)} disabled={Boolean(removingItems[item.id])}>
                         Quitar
