@@ -260,7 +260,6 @@ export default function HomePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="catalog-search-content">
-              <span className="muted">Buscar en catalogo</span>
               <input
                 autoFocus
                 value={searchDraft}
