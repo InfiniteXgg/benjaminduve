@@ -235,6 +235,19 @@ button, input, textarea { font: inherit; }
 .theme-toggle.is-dark .theme-toggle-thumb { transform: translateX(16px); background: #f5f5f5; }
 .theme-toggle.is-dark .theme-toggle-sun,
 .theme-toggle.is-light .theme-toggle-moon { opacity: .42; }
+.theme-toggle.is-light {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  color: #111;
+}
+.theme-toggle.is-light:hover,
+.theme-toggle.is-light:focus-visible {
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.16);
+}
+.theme-toggle.is-light .theme-toggle-track { background: rgba(255, 255, 255, 0.9); }
+.theme-toggle.is-light .theme-toggle-thumb { background: #111; }
+.theme-toggle.is-light .theme-toggle-moon { opacity: .56; }
+.theme-toggle.is-light .theme-toggle-icon { color: #111; }
 .cart-badge {
   position: absolute;
   top: -6px;
@@ -368,8 +381,8 @@ button, input, textarea { font: inherit; }
   letter-spacing: var(--letter-spacing-wide);
   text-transform: uppercase;
   cursor: pointer;
-  backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   transition: var(--transition-colors);
 }
 .catalog-card-hover-action button:hover,
@@ -483,12 +496,33 @@ button, input, textarea { font: inherit; }
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.58);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.6);
   animation: product-modal-backdrop .22s ease both;
 }
+.product-modal-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+html[data-theme='light'] .product-modal-overlay {
+  background: rgba(255, 255, 255, 0.14);
+}
+html[data-theme='light'] .product-modal-overlay::before {
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+html[data-theme='light'] .product-modal {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.1);
+}
 .product-modal {
+  position: relative;
+  z-index: 1;
   position: relative;
   width: min(1080px, 96vw);
   max-height: min(860px, 90vh);
