@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
@@ -193,6 +194,19 @@ export default function HomePage() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [selectedProduct])
 
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow
+    if (selectedProduct) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = originalOverflow
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [selectedProduct])
+
   const openProductModal = (product) => {
     setSelectedProduct(product)
     setSelectedImageIndex(0)
@@ -260,7 +274,7 @@ export default function HomePage() {
           </section>
         </div>
       )}
-      {selectedProduct && (
+      {selectedProduct && typeof document !== 'undefined' && createPortal(
         <div className="product-modal-overlay" role="presentation" onMouseDown={() => setSelectedProduct(null)}>
           <section
             className="product-modal"
@@ -353,7 +367,8 @@ export default function HomePage() {
               {detailError && <p className="field-error">{detailError}</p>}
             </div>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
       <HeroCarousel />
       <main className="container">
