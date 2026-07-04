@@ -1,6 +1,6 @@
 export default function BrandLogo({ className = '', compact = false }) {
-  const width = compact ? 120 : 130
-  const height = compact ? 44 : 48
+  const width = compact ? 132 : 148
+  const height = compact ? 48 : 54
 
   return (
     <svg className={className} viewBox="0 0 320 120" aria-hidden="true" focusable="false" width={width} height={height}>

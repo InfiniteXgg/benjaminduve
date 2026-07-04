@@ -156,7 +156,7 @@ class AdminApiController extends Controller
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
-        $data = $request->validate(array_merge($this->productValidationRules(), [
+        $data = $request->validate(array_merge($this->productValidationRules($product->id), [
             'slug' => [
                 'required',
                 'string',
@@ -394,10 +394,15 @@ class AdminApiController extends Controller
         ];
     }
 
-    private function productValidationRules(): array
+    private function productValidationRules(?int $ignoreId = null): array
     {
+        $nameRule = Rule::unique('products', 'name');
+        if ($ignoreId !== null) {
+            $nameRule = $nameRule->ignore($ignoreId);
+        }
+
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => array_merge(['required', 'string', 'max:255'], [$nameRule]),
             'description' => ['nullable', 'string'],
             'size' => ['nullable', 'string', 'max:120'],
             'height_cm' => ['nullable', 'numeric', 'min:0'],

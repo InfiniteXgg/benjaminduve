@@ -10,6 +10,12 @@ export default function PublicHeader({ onSearchClick = null }) {
     <header className="top-header">
       <div className="header-wrap">
         <div className="header-left">
+          <a href="/" className="brand-link" aria-label="Ir al home">
+            <BrandLogo />
+          </a>
+        </div>
+
+        <div className="header-right">
           {onSearchClick && (
             <button
               type="button"
@@ -24,15 +30,6 @@ export default function PublicHeader({ onSearchClick = null }) {
               </svg>
             </button>
           )}
-        </div>
-
-        <div className="header-center">
-          <a href="/" className="brand-link" aria-label="Ir al home">
-            <BrandLogo />
-          </a>
-        </div>
-
-        <div className="header-right">
           <NavLink to="/carrito" className="nav-btn cart-btn icon-btn" aria-label="Carrito">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9">
               <path d="M6 6h15l-1.5 9h-12z"></path>

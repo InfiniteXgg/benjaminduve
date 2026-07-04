@@ -269,6 +269,16 @@ export default function AdminDashboardPage() {
     return () => clearTimeout(id)
   }, [notice])
 
+  // Live-search for products while typing (debounced)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setProductPage(1)
+      loadProducts({ q: productQ, page: 1 }).catch(() => {})
+    }, 300)
+
+    return () => clearTimeout(id)
+  }, [productQ])
+
   useEffect(() => {
     const pollId = window.setInterval(async () => {
       try {
@@ -501,7 +511,18 @@ export default function AdminDashboardPage() {
             <div className="product-toolbar">
               <button type="button" onClick={() => setShowCreateModal(true)}>Agregar producto</button>
               <div className="search-row product-search-inline">
-                <input value={productQ} onChange={(e) => setProductQ(e.target.value)} placeholder="Buscar producto..." />
+                <input
+                  value={productQ}
+                  onChange={(e) => setProductQ(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      setProductPage(1)
+                      await loadProducts({ q: productQ, page: 1 })
+                    }
+                  }}
+                  placeholder="Buscar producto..."
+                />
                 <button
                   type="button"
                   onClick={async () => {
@@ -703,8 +724,19 @@ export default function AdminDashboardPage() {
           </section>
         ) : (
           <section className="panel">
-            <div className="filter-row">
-              <input value={orderQ} onChange={(e) => setOrderQ(e.target.value)} placeholder="Buscar por cliente, correo o estado" />
+              <div className="filter-row">
+              <input
+                value={orderQ}
+                onChange={(e) => setOrderQ(e.target.value)}
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    setOrderPage(1)
+                    await loadOrders({ q: orderQ, dateFrom, dateTo, page: 1 })
+                  }
+                }}
+                placeholder="Buscar por cliente, correo o estado"
+              />
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
               <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               <button
