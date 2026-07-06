@@ -61,8 +61,10 @@ export const adminApi = {
     return data
   },
 
-  async deleteOrder(orderId) {
-    const { data } = await api.delete(`/admin/orders/${orderId}`)
+  async deleteOrder(orderId, restoreStock = false) {
+    const { data } = await api.delete(`/admin/orders/${orderId}`, {
+      params: { restore_stock: restoreStock ? 1 : 0 },
+    })
     return data
   },
 }

@@ -458,13 +458,13 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const onDeleteOrder = async (orderId) => {
+  const onDeleteOrder = async (orderId, restoreStock = false) => {
     setRemovingOrderId(orderId)
 
     await new Promise((resolve) => setTimeout(resolve, 220))
 
     try {
-      const response = await adminApi.deleteOrder(orderId)
+      const response = await adminApi.deleteOrder(orderId, restoreStock)
       showNotice(response.message || 'Pedido eliminado correctamente.')
       setSelectedOrder(null)
       await Promise.all([loadOrders(), loadSummary()])
@@ -882,9 +882,19 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="card-actions">
-              <button type="button" className="btn-danger" onClick={() => onDeleteOrder(selectedOrder.id)} disabled={removingOrderId === selectedOrder.id}>
+              <button type="button" className="btn-danger" onClick={() => onDeleteOrder(selectedOrder.id, false)} disabled={removingOrderId === selectedOrder.id}>
                 {removingOrderId === selectedOrder.id ? 'Eliminando...' : 'Eliminar Pedido'}
               </button>
+              {selectedOrder.status === 'paid' && (
+                <button
+                  type="button"
+                  className="btn-alt"
+                  onClick={() => onDeleteOrder(selectedOrder.id, true)}
+                  disabled={removingOrderId === selectedOrder.id}
+                >
+                  {removingOrderId === selectedOrder.id ? 'Procesando...' : 'Eliminar y devolver stock'}
+                </button>
+              )}
               <button type="button" className="btn-alt" onClick={() => setSelectedOrder(null)}>Cerrar</button>
             </div>
           </section>

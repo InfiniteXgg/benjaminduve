@@ -33,7 +33,7 @@ export default function PreCheckoutPage() {
   const [draft, setDraft] = useState(loadDraft)
   const [notice, setNotice] = useState('')
   const [noticeTone, setNoticeTone] = useState('info')
-  const [rutError, setRutError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     localStorage.setItem(RECEIPT_DRAFT_KEY, JSON.stringify(draft))
@@ -55,16 +55,41 @@ export default function PreCheckoutPage() {
     )
   }, [draft])
 
-  const validateTaxId = (value = draft.billing_tax_id) => {
-    const trimmed = value.trim()
-    if (!trimmed) {
-      setRutError('')
-      return true
+  const validateFields = () => {
+    const nextErrors = {}
+    const trimmedName = draft.customer_name.trim()
+    const trimmedEmail = draft.customer_email.trim()
+    const trimmedTaxId = draft.billing_tax_id.trim()
+    const trimmedAddress = draft.billing_address.trim()
+    const trimmedCity = draft.billing_city.trim()
+
+    if (trimmedName.length < 3) {
+      nextErrors.customer_name = 'Ingresa nombre y apellido válido.'
     }
 
-    const result = validateRut(trimmed)
-    setRutError(result.valid ? '' : result.message)
-    return result.valid
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      nextErrors.customer_email = 'Ingresa un correo válido.'
+    }
+
+    if (!trimmedTaxId) {
+      nextErrors.billing_tax_id = 'Ingresa RUT o documento.'
+    } else {
+      const result = validateRut(trimmedTaxId)
+      if (!result.valid) {
+        nextErrors.billing_tax_id = result.message || 'El RUT ingresado no es válido.'
+      }
+    }
+
+    if (trimmedAddress.length < 6) {
+      nextErrors.billing_address = 'Ingresa dirección válida.'
+    }
+
+    if (trimmedCity.length < 2) {
+      nextErrors.billing_city = 'Ingresa ciudad o comuna válida.'
+    }
+
+    setFieldErrors(nextErrors)
+    return nextErrors
   }
 
   const continuePurchase = () => {
@@ -74,23 +99,10 @@ export default function PreCheckoutPage() {
       return
     }
 
-    if (!requiredDraftOk) {
+    const errors = validateFields()
+    if (Object.keys(errors).length > 0) {
       setNoticeTone('error')
-      setNotice('Completa los datos obligatorios para continuar.')
-      return
-    }
-
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.customer_email.trim())
-    if (!emailOk) {
-      setNoticeTone('error')
-      setNotice('Ingresa un correo valido para continuar.')
-      return
-    }
-
-    const taxIdOk = validateTaxId()
-    if (!taxIdOk) {
-      setNoticeTone('error')
-      setNotice('El RUT ingresado no es válido.')
+      setNotice('Corrige los campos marcados en rojo para continuar.')
       return
     }
 
@@ -127,52 +139,99 @@ export default function PreCheckoutPage() {
                   <div className="triple">
                     <div className="stack">
                       <input
+                        className={fieldErrors.customer_name ? 'is-invalid' : undefined}
                         value={draft.customer_name}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, customer_name: e.target.value }))}
+                        onChange={(e) => {
+                          setDraft((prev) => ({ ...prev, customer_name: e.target.value }))
+                          setFieldErrors((current) => {
+                            const next = { ...current }
+                            delete next.customer_name
+                            return next
+                          })
+                        }}
                         placeholder="Nombre completo"
+                        aria-invalid={Boolean(fieldErrors.customer_name)}
                       />
                       <p className="muted">Formato: nombre y apellido, min. 3 caracteres.</p>
+                      {fieldErrors.customer_name && <p className="field-error">{fieldErrors.customer_name}</p>}
                     </div>
                     <div className="stack">
                       <input
+                        className={fieldErrors.customer_email ? 'is-invalid' : undefined}
                         type="email"
                         value={draft.customer_email}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, customer_email: e.target.value }))}
+                        onChange={(e) => {
+                          setDraft((prev) => ({ ...prev, customer_email: e.target.value }))
+                          setFieldErrors((current) => {
+                            const next = { ...current }
+                            delete next.customer_email
+                            return next
+                          })
+                        }}
                         placeholder="Correo"
+                        aria-invalid={Boolean(fieldErrors.customer_email)}
                       />
                       <p className="muted">Formato: correo@dominio.com</p>
+                      {fieldErrors.customer_email && <p className="field-error">{fieldErrors.customer_email}</p>}
                     </div>
                     <div className="stack">
                       <input
+                        className={fieldErrors.billing_tax_id ? 'is-invalid' : undefined}
                         value={draft.billing_tax_id}
                         onChange={(e) => {
                           setDraft((prev) => ({ ...prev, billing_tax_id: e.target.value }))
-                          if (rutError) setRutError('')
+                          setFieldErrors((current) => {
+                            const next = { ...current }
+                            delete next.billing_tax_id
+                            return next
+                          })
                         }}
-                        onBlur={() => validateTaxId()}
+                        onBlur={() => validateFields()}
                         placeholder="RUT / Documento"
-                        aria-invalid={Boolean(rutError)}
+                        aria-invalid={Boolean(fieldErrors.billing_tax_id)}
                       />
                       <p className="muted">Formato: 12345678-9 o 12.345.678-9</p>
-                      {rutError && <p className="field-error">{rutError}</p>}
+                      {fieldErrors.billing_tax_id && <p className="field-error">{fieldErrors.billing_tax_id}</p>}
                     </div>
                   </div>
                   <div className="triple">
                     <div className="stack">
                       <input
+                        className={fieldErrors.billing_address ? 'is-invalid' : undefined}
                         value={draft.billing_address}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, billing_address: e.target.value }))}
+                        onChange={(e) => {
+                          setDraft((prev) => ({ ...prev, billing_address: e.target.value }))
+                          setFieldErrors((current) => {
+                            const next = { ...current }
+                            delete next.billing_address
+                            return next
+                          })
+                        }}
+                        onBlur={() => validateFields()}
                         placeholder="Direccion"
+                        aria-invalid={Boolean(fieldErrors.billing_address)}
                       />
                       <p className="muted">Formato: calle y numero, min. 6 caracteres.</p>
+                      {fieldErrors.billing_address && <p className="field-error">{fieldErrors.billing_address}</p>}
                     </div>
                     <div className="stack">
                       <input
+                        className={fieldErrors.billing_city ? 'is-invalid' : undefined}
                         value={draft.billing_city}
-                        onChange={(e) => setDraft((prev) => ({ ...prev, billing_city: e.target.value }))}
+                        onChange={(e) => {
+                          setDraft((prev) => ({ ...prev, billing_city: e.target.value }))
+                          setFieldErrors((current) => {
+                            const next = { ...current }
+                            delete next.billing_city
+                            return next
+                          })
+                        }}
+                        onBlur={() => validateFields()}
                         placeholder="Ciudad / Comuna"
+                        aria-invalid={Boolean(fieldErrors.billing_city)}
                       />
                       <p className="muted">Formato: ciudad o comuna, min. 2 caracteres.</p>
+                      {fieldErrors.billing_city && <p className="field-error">{fieldErrors.billing_city}</p>}
                     </div>
                     <div className="stack">
                       <input

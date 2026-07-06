@@ -137,6 +137,10 @@ class StoreApiController extends Controller
                 $subtotal = (float) $product->price * $quantity;
                 $total += $subtotal;
 
+                $previousStock = (int) $product->stock;
+                $product->decrement('stock', $quantity);
+                $this->stockAlerts->notifyAdminsIfNeeded($product->fresh(), $previousStock);
+
                 $orderItems[] = [
                     'product' => $product,
                     'quantity' => $quantity,
@@ -281,12 +285,9 @@ class StoreApiController extends Controller
         DB::transaction(function () use ($order) {
             $order->load('items.product');
 
-            // Solo devolver stock si el pedido fue aceptado y pagado
-            if ($order->status === 'paid') {
-                foreach ($order->items as $item) {
-                    if ($item->product) {
-                        $item->product->increment('stock', $item->quantity);
-                    }
+            foreach ($order->items as $item) {
+                if ($item->product) {
+                    $item->product->increment('stock', $item->quantity);
                 }
             }
 

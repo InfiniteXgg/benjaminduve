@@ -116,10 +116,11 @@ export default function OrderPage() {
 
     localStorage.removeItem(RECEIPT_DRAFT_KEY)
     localStorage.removeItem('latest_order')
-    restoreCartFromSnapshot()
+    localStorage.removeItem(ORDER_CART_RESTORE_KEY)
+    restoreCart([])
     localStorage.setItem(CART_NOTICE_KEY, 'Pago rechazado. Puedes volver a intentarlo cuando quieras.')
     navigate('/', { replace: true })
-  }, [navigate, order?.should_reset_checkout_data, restoreCartFromSnapshot])
+  }, [navigate, order?.should_reset_checkout_data, restoreCart])
 
   useEffect(() => {
     if (!order?.can_print_receipt) return

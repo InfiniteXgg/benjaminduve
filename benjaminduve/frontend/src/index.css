@@ -86,7 +86,8 @@ button, input, textarea { font: inherit; }
   animation: admin-notice-pop .22s ease both;
 }
 .muted { color: var(--muted); font-size: 13px; font-weight: 500; }
-.field-error { color: #c62828; font-size: 12px; font-weight: 700; margin: 0; }
+.field-error { color: #c62828; font-size: 12px; font-weight: 700; margin: 6px 0 0; }
+input.is-invalid { border-color: #c62828; box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.18); }
 .price { font-weight: 700; font-size: 18px; }
 .placeholder { height: 110px; border: 1px dashed var(--border); border-radius: 8px; background: var(--surface-soft); display: grid; place-items: center; color: var(--muted); }
 .detail-placeholder { height: 220px; margin-bottom: 10px; }

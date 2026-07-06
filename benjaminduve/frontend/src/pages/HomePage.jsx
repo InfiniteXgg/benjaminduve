@@ -47,6 +47,7 @@ export default function HomePage() {
   const [searchPanelClosing, setSearchPanelClosing] = useState(false)
   const [searchPanelCloseTimeout, setSearchPanelCloseTimeout] = useState(null)
   const searchPanelRef = useRef(null)
+  const searchInputRef = useRef(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [detailQuantity, setDetailQuantity] = useState(1)
@@ -162,6 +163,10 @@ export default function HomePage() {
   useEffect(() => {
     if (!searchPanelOpen) return undefined
 
+    if (searchInputRef.current) {
+      searchInputRef.current.focus({ preventScroll: true })
+    }
+
     const onKeyDown = (event) => {
       if (event.key === 'Escape') closeSearchPanel()
     }
@@ -261,7 +266,7 @@ export default function HomePage() {
           >
             <div className="catalog-search-content">
               <input
-                autoFocus
+                ref={searchInputRef}
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
                 onBlur={handleSearchInputBlur}

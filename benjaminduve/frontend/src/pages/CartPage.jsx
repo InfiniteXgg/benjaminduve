@@ -13,6 +13,8 @@ export default function CartPage() {
   const [notice, setNotice] = useState('')
   const [noticeTone, setNoticeTone] = useState('info')
   const [removingItems, setRemovingItems] = useState({})
+  const [quantityDrafts, setQuantityDrafts] = useState({})
+  const [quantityErrors, setQuantityErrors] = useState({})
 
   useEffect(() => {
     const flash = localStorage.getItem(CART_NOTICE_KEY)
@@ -42,11 +44,47 @@ export default function CartPage() {
   }
 
   const onUpdateQuantity = (productId, nextQuantity) => {
-    const result = updateItemQuantity(productId, nextQuantity)
+    setQuantityDrafts((current) => ({ ...current, [productId]: nextQuantity }))
+    setQuantityErrors((current) => {
+      const next = { ...current }
+      delete next[productId]
+      return next
+    })
+  }
+
+  const onCommitQuantity = (productId) => {
+    const draft = quantityDrafts[productId]
+    if (draft == null) return
+
+    const parsedQuantity = Number(draft)
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+      const message = 'Ingresa una cantidad válida.'
+      setQuantityErrors((current) => ({ ...current, [productId]: message }))
+      setNoticeTone('error')
+      setNotice(message)
+      return
+    }
+
+    const result = updateItemQuantity(productId, parsedQuantity)
     if (!result.ok) {
+      setQuantityErrors((current) => ({ ...current, [productId]: result.message }))
       setNoticeTone('error')
       setNotice(result.message)
+      return
     }
+
+    setNoticeTone('info')
+    setNotice(result.message)
+    setQuantityErrors((current) => {
+      const next = { ...current }
+      delete next[productId]
+      return next
+    })
+    setQuantityDrafts((current) => {
+      const next = { ...current }
+      delete next[productId]
+      return next
+    })
   }
 
   return (
@@ -76,13 +114,23 @@ export default function CartPage() {
                       <input
                         type="number"
                         min="1"
-                        value={item.quantity}
-                        onChange={(e) => onUpdateQuantity(item.id, Number(e.target.value || 1))}
+                        value={quantityDrafts[item.id] ?? item.quantity}
+                        className={quantityErrors[item.id] ? 'is-invalid' : undefined}
+                        onChange={(e) => onUpdateQuantity(item.id, e.target.value)}
+                        onBlur={() => onCommitQuantity(item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            onCommitQuantity(item.id)
+                          }
+                        }}
+                        aria-invalid={Boolean(quantityErrors[item.id])}
                       />
                       <button type="button" onClick={() => onRemoveItem(item.id)} disabled={Boolean(removingItems[item.id])}>
                         Quitar
                       </button>
                     </div>
+                    {quantityErrors[item.id] && <p className="field-error">{quantityErrors[item.id]}</p>}
                   </article>
                 ))}
               </div>

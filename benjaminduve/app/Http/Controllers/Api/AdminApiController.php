@@ -287,17 +287,6 @@ class AdminApiController extends Controller
         }
 
         DB::transaction(function () use ($order): void {
-            $order->load('items.product');
-
-            // Disminuir stock al aceptar el pedido
-            foreach ($order->items as $item) {
-                if ($item->product) {
-                    $previousStock = (int) $item->product->stock;
-                    $item->product->decrement('stock', $item->quantity);
-                    $this->stockAlerts->notifyAdminsIfNeeded($item->product->fresh(), $previousStock);
-                }
-            }
-
             $order->update([
                 'status' => 'paid',
                 'payment_status' => 'prototype_paid',
@@ -352,11 +341,12 @@ class AdminApiController extends Controller
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
-        DB::transaction(function () use ($order): void {
+        $restoreStock = $request->query('restore_stock') === '1';
+
+        DB::transaction(function () use ($order, $restoreStock): void {
             $order->load('items.product');
 
-            // Solo devolver stock si el pedido fue aceptado y pagado
-            if ($order->status === 'paid') {
+            if ($restoreStock && $order->status === 'paid') {
                 foreach ($order->items as $item) {
                     if ($item->product) {
                         $item->product->increment('stock', $item->quantity);
