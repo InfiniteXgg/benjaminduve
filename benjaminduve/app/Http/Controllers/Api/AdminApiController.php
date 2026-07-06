@@ -130,7 +130,7 @@ class AdminApiController extends Controller
 
         $product = Product::create([
             'name' => $data['name'],
-            'slug' => $this->buildUniqueSlug($data['name']),
+            'slug' => $data['slug'] ? Str::slug($data['slug']) : $this->buildUniqueSlug($data['name']),
             'description' => $data['description'] ?? null,
             'size' => $measurements['size'],
             'height_cm' => $measurements['height_cm'],
@@ -150,11 +150,13 @@ class AdminApiController extends Controller
         ], 201);
     }
 
-    public function updateProduct(Request $request, Product $product): JsonResponse
+    public function updateProduct(Request $request, int $id): JsonResponse
     {
         if (!$this->requireAdmin($request)) {
             return response()->json(['message' => 'No autorizado.'], 403);
         }
+
+        $product = Product::findOrFail($id);
 
         $data = $request->validate(array_merge($this->productValidationRules($product->id), [
             'slug' => [
@@ -190,11 +192,13 @@ class AdminApiController extends Controller
         ]);
     }
 
-    public function deleteProduct(Request $request, Product $product): JsonResponse
+    public function deleteProduct(Request $request, int $id): JsonResponse
     {
         if (!$this->requireAdmin($request)) {
             return response()->json(['message' => 'No autorizado.'], 403);
         }
+
+        $product = Product::findOrFail($id);
 
         $product->delete();
 
@@ -203,11 +207,13 @@ class AdminApiController extends Controller
         ]);
     }
 
-    public function deleteProductImage(Request $request, Product $product, ProductImage $image): JsonResponse
+    public function deleteProductImage(Request $request, int $id, ProductImage $image): JsonResponse
     {
         if (!$this->requireAdmin($request)) {
             return response()->json(['message' => 'No autorizado.'], 403);
         }
+
+        $product = Product::findOrFail($id);
 
         if ((int) $image->product_id !== (int) $product->id) {
             return response()->json([
@@ -387,12 +393,15 @@ class AdminApiController extends Controller
     private function productValidationRules(?int $ignoreId = null): array
     {
         $nameRule = Rule::unique('products', 'name');
+        $slugRule = Rule::unique('products', 'slug');
         if ($ignoreId !== null) {
             $nameRule = $nameRule->ignore($ignoreId);
+            $slugRule = $slugRule->ignore($ignoreId);
         }
 
         return [
             'name' => array_merge(['required', 'string', 'max:255'], [$nameRule]),
+            'slug' => array_merge(['nullable', 'string', 'max:255'], [$slugRule]),
             'description' => ['nullable', 'string'],
             'size' => ['nullable', 'string', 'max:120'],
             'height_cm' => ['nullable', 'numeric', 'min:0'],
@@ -410,6 +419,11 @@ class AdminApiController extends Controller
     private function productValidationMessages(): array
     {
         return [
+            'name.required' => 'El nombre del producto es obligatorio.',
+            'name.unique' => 'Este nombre de producto ya está siendo utilizado.',
+            'slug.unique' => 'Este ID ya está siendo utilizado.',
+            'price.required' => 'El precio es obligatorio.',
+            'stock.required' => 'El stock es obligatorio.',
             'images.max' => 'Puedes guardar hasta 8 fotos por producto.',
             'images.*.url.max' => 'Una de las fotos es demasiado pesada. Prueba con una imagen mas liviana.',
             'images.*.url.required_with' => 'Cada foto necesita una URL valida.',

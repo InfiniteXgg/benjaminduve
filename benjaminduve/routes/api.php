@@ -25,9 +25,9 @@ Route::prefix('admin')->group(function () {
 
         Route::get('/products', [AdminApiController::class, 'products']);
         Route::post('/products', [AdminApiController::class, 'storeProduct']);
-        Route::put('/products/{product}', [AdminApiController::class, 'updateProduct']);
-        Route::delete('/products/{product}', [AdminApiController::class, 'deleteProduct']);
-        Route::delete('/products/{product}/images/{image}', [AdminApiController::class, 'deleteProductImage']);
+        Route::put('/products/{id}', [AdminApiController::class, 'updateProduct']);
+        Route::delete('/products/{id}', [AdminApiController::class, 'deleteProduct']);
+        Route::delete('/products/{id}/images/{image}', [AdminApiController::class, 'deleteProductImage']);
 
         Route::get('/orders', [AdminApiController::class, 'orders']);
         Route::post('/orders/{order}/accept', [AdminApiController::class, 'acceptOrder']);

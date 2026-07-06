@@ -31,18 +31,18 @@ export const adminApi = {
     return data
   },
 
-  async updateProduct(productSlug, payload) {
-    const { data } = await api.put(`/admin/products/${productSlug}`, payload)
+  async updateProduct(productId, payload) {
+    const { data } = await api.put(`/admin/products/${productId}`, payload)
     return data
   },
 
-  async deleteProduct(productSlug) {
-    const { data } = await api.delete(`/admin/products/${productSlug}`)
+  async deleteProduct(productId) {
+    const { data } = await api.delete(`/admin/products/${productId}`)
     return data
   },
 
-  async deleteProductImage(productSlug, imageId) {
-    const { data } = await api.delete(`/admin/products/${productSlug}/images/${imageId}`)
+  async deleteProductImage(productId, imageId) {
+    const { data } = await api.delete(`/admin/products/${productId}/images/${imageId}`)
     return data
   },
 

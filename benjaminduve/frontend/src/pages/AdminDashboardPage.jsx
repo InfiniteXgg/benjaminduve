@@ -7,6 +7,7 @@ import { formatCurrency, readApiError } from '../utils'
 
 const EMPTY_PRODUCT = {
   name: '',
+  slug: '',
   description: '',
   size: '',
   height_cm: '',
@@ -361,7 +362,7 @@ export default function AdminDashboardPage() {
         images,
         mainImage: images[0]?.url || '',
       }
-      const response = await adminApi.updateProduct(product.slug, payload)
+      const response = await adminApi.updateProduct(product.id, payload)
       showNotice(response.message)
       await Promise.all([loadProducts(), loadSummary()])
     } catch (error) {
@@ -378,7 +379,7 @@ export default function AdminDashboardPage() {
 
     if (image.id && product.slug && !isEmbeddedImageSource(image.url)) {
       try {
-        const response = await adminApi.deleteProductImage(product.slug, image.id)
+        const response = await adminApi.deleteProductImage(product.id, image.id)
         showNotice(response.message || 'Imagen eliminada correctamente.')
         await loadProducts()
         return
@@ -432,13 +433,13 @@ export default function AdminDashboardPage() {
     setDragging(null)
   }
 
-  const onDeleteProduct = async (slug) => {
-    setRemovingProductSlug(slug)
+  const onDeleteProduct = async (id) => {
+    setRemovingProductSlug(id)
 
     await new Promise((resolve) => setTimeout(resolve, 220))
 
     try {
-      const response = await adminApi.deleteProduct(slug)
+      const response = await adminApi.deleteProduct(id)
       showNotice(response.message || 'Producto eliminado correctamente.')
       await Promise.all([loadProducts(), loadSummary()])
     } catch (error) {
@@ -685,7 +686,7 @@ export default function AdminDashboardPage() {
                       </label>
                       <div className="card-actions">
                         <button type="button" onClick={() => onUpdateProduct(product)}>Guardar cambios</button>
-                        <button type="button" className="btn-danger" onClick={() => onDeleteProduct(product.slug)}>Eliminar</button>
+                        <button type="button" className="btn-danger" onClick={() => onDeleteProduct(product.id)}>Eliminar</button>
                       </div>
                     </div>
                   )}
@@ -909,6 +910,9 @@ export default function AdminDashboardPage() {
               <div className="admin-form-grid">
                 <AdminField label="Nombre del producto">
                   <input placeholder="Ej: BOLSO 4" value={newProduct.name} onChange={(e) => setNewProduct((prev) => ({ ...prev, name: e.target.value }))} required />
+                </AdminField>
+                <AdminField label="ID del producto">
+                  <input placeholder="Ej: bolso-4 (opcional)" value={newProduct.slug} onChange={(e) => setNewProduct((prev) => ({ ...prev, slug: e.target.value }))} />
                 </AdminField>
                 <AdminField label="Precio">
                   <input type="number" step="0.01" min="0" placeholder="Ej: 29990" value={newProduct.price} onChange={(e) => setNewProduct((prev) => ({ ...prev, price: e.target.value }))} required />
