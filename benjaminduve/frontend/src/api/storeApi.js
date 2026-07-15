@@ -11,6 +11,11 @@ export const storeApi = {
     return data
   },
 
+  async listHeroSlides() {
+    const { data } = await api.get('/hero-slides')
+    return data
+  },
+
   async createOrder(payload) {
     const { data } = await api.post('/orders', payload)
     return data
@@ -33,4 +38,3 @@ export const storeApi = {
     return data
   },
 }
-

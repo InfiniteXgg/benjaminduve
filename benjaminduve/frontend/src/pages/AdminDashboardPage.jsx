@@ -20,32 +20,13 @@ const EMPTY_PRODUCT = {
   images: [],
 }
 
-function productImagesText(images = []) {
-  return images
-    .map((image) => image.url)
-    .filter((url) => url && !isEmbeddedImageSource(url))
-    .join('\n')
-}
-
-function isEmbeddedImageSource(url = '') {
-  return String(url).startsWith('data:image/')
-}
-
-function imagesFromText(value, productName = 'Producto') {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 8)
-    .map((url, index) => ({
-      url,
-      alt: `${productName || 'Producto'} foto ${index + 1}`,
-    }))
-}
-
-function mergeExternalImageText(existingImages = [], value, productName = 'Producto') {
-  const embeddedImages = existingImages.filter((image) => isEmbeddedImageSource(image?.url))
-  return [...embeddedImages, ...imagesFromText(value, productName)].slice(0, 8)
+const EMPTY_HERO_SLIDE = {
+  eyebrow: '',
+  title: '',
+  cta: 'Ver catalogo',
+  image: '',
+  sort_order: 0,
+  is_active: true,
 }
 
 function normalizeProductImages(images = [], productName = 'Producto') {
@@ -151,6 +132,10 @@ export default function AdminDashboardPage() {
 
   const [dragging, setDragging] = useState(null) // { productId, index, isNew }
 
+  const [heroSlides, setHeroSlides] = useState([])
+  const [newHeroSlide, setNewHeroSlide] = useState(EMPTY_HERO_SLIDE)
+  const [removingHeroSlideId, setRemovingHeroSlideId] = useState('')
+
   const [orders, setOrders] = useState([])
   const [orderMeta, setOrderMeta] = useState({})
   const [orderQ, setOrderQ] = useState('')
@@ -211,6 +196,11 @@ export default function AdminDashboardPage() {
     setOrderMeta(response.meta || {})
   }
 
+  const loadHeroSlides = async () => {
+    const response = await adminApi.listHeroSlides()
+    setHeroSlides(response.data || [])
+  }
+
   const addImagesToProduct = async (productId, files) => {
     try {
       const product = products.find((item) => item.id === productId)
@@ -239,12 +229,22 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const removeNewProductImage = (indexToRemove) => {
-    setNewProduct((prev) => {
-      const imagesList = (prev.images || []).filter((_, index) => index !== indexToRemove)
-      const mainImage = prev.mainImage === prev.images?.[indexToRemove]?.url ? (imagesList[0]?.url || '') : prev.mainImage
-      return { ...prev, images: imagesList, mainImage }
-    })
+  const setHeroSlideImage = async (slideId, files) => {
+    try {
+      const [image] = await readImageFiles(files, 'Slide')
+      if (!image) return
+
+      if (slideId === 'new') {
+        setNewHeroSlide((prev) => ({ ...prev, image: image.url }))
+        return
+      }
+
+      setHeroSlides((prev) => prev.map((slide) => (
+        slide.id === slideId ? { ...slide, image: image.url } : slide
+      )))
+    } catch (error) {
+      showNotice(error.message, 'error')
+    }
   }
 
   useEffect(() => {
@@ -253,7 +253,7 @@ export default function AdminDashboardPage() {
       const allowed = await ensureAuth()
       if (!allowed || !mounted) return
       try {
-        await Promise.all([loadSummary(), loadProducts(), loadOrders()])
+        await Promise.all([loadSummary(), loadProducts(), loadOrders(), loadHeroSlides()])
       } catch (error) {
         if (mounted) showNotice(readApiError(error), 'error')
       }
@@ -370,6 +370,56 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const heroSlidePayload = (slide) => ({
+    eyebrow: slide.eyebrow,
+    title: slide.title,
+    cta: slide.cta,
+    image: slide.image,
+    sort_order: Number(slide.sort_order || 0),
+    is_active: Boolean(slide.is_active),
+  })
+
+  const onCreateHeroSlide = async (event) => {
+    event.preventDefault()
+    try {
+      const payload = heroSlidePayload({
+        ...newHeroSlide,
+        sort_order: newHeroSlide.sort_order || heroSlides.length,
+      })
+      const response = await adminApi.createHeroSlide(payload)
+      showNotice(response.message || 'Slide creado correctamente.')
+      setNewHeroSlide({ ...EMPTY_HERO_SLIDE, sort_order: heroSlides.length + 1 })
+      await loadHeroSlides()
+    } catch (error) {
+      showNotice(readApiError(error), 'error')
+    }
+  }
+
+  const onUpdateHeroSlide = async (slide) => {
+    try {
+      const response = await adminApi.updateHeroSlide(slide.id, heroSlidePayload(slide))
+      showNotice(response.message || 'Slide actualizado.')
+      await loadHeroSlides()
+    } catch (error) {
+      showNotice(readApiError(error), 'error')
+    }
+  }
+
+  const onDeleteHeroSlide = async (slideId) => {
+    setRemovingHeroSlideId(slideId)
+    await new Promise((resolve) => setTimeout(resolve, 180))
+
+    try {
+      const response = await adminApi.deleteHeroSlide(slideId)
+      showNotice(response.message || 'Slide eliminado.')
+      await loadHeroSlides()
+    } catch (error) {
+      showNotice(readApiError(error), 'error')
+    } finally {
+      setRemovingHeroSlideId('')
+    }
+  }
+
   const removeProductImage = async (productId, indexToRemove) => {
     const product = products.find((item) => item.id === productId)
     if (!product) return
@@ -377,7 +427,7 @@ export default function AdminDashboardPage() {
     const image = product.images?.[indexToRemove]
     if (!image) return
 
-    if (image.id && product.slug && !isEmbeddedImageSource(image.url)) {
+    if (image.id && product.slug) {
       try {
         const response = await adminApi.deleteProductImage(product.id, image.id)
         showNotice(response.message || 'Imagen eliminada correctamente.')
@@ -397,9 +447,7 @@ export default function AdminDashboardPage() {
       item.id === productId ? updatedProduct : item
     )))
 
-    if (updatedProduct.slug && !isEmbeddedImageSource(image.url)) {
-      await onUpdateProduct(updatedProduct)
-    }
+    if (updatedProduct.slug) await onUpdateProduct(updatedProduct)
   }
 
   const reorderArray = (arr, fromIndex, toIndex) => {
@@ -637,18 +685,6 @@ export default function AdminDashboardPage() {
                                 <span className="muted">Sin fotos cargadas</span>
                               )}
                         </div>
-                        <span className="image-editor-note">Fotos cargadas como miniaturas. Agrega URLs externas solo si las necesitas.</span>
-                        <AdminField label="URLs externas">
-                          <textarea
-                            value={productImagesText(product.images || [])}
-                            onChange={(e) => setProducts((prev) => prev.map((p) => (
-                              p.id === product.id
-                                ? { ...p, images: mergeExternalImageText(p.images || [], e.target.value, product.name) }
-                                : p
-                            )))}
-                            placeholder="Una URL por linea"
-                          />
-                        </AdminField>
                         <div className="card-actions">
                           <label className="btn-alt file-btn">
                             Cargar fotos
@@ -722,6 +758,106 @@ export default function AdminDashboardPage() {
                 Siguiente →
               </button>
             </nav>
+          </section>
+        ) : tab === 'carousel' ? (
+          <section className="panel">
+            <div className="product-toolbar">
+              <h3>Carrusel principal</h3>
+            </div>
+
+            <form className="carousel-admin-card carousel-admin-card--new" onSubmit={onCreateHeroSlide}>
+              <div className="carousel-slide-preview">
+                {newHeroSlide.image ? (
+                  <img src={newHeroSlide.image} alt={newHeroSlide.title || 'Nuevo slide'} />
+                ) : (
+                  <span>Foto</span>
+                )}
+              </div>
+              <div className="carousel-slide-fields">
+                <div className="admin-form-grid">
+                  <AdminField label="Etiqueta">
+                    <input value={newHeroSlide.eyebrow} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, eyebrow: e.target.value }))} placeholder="Ej: NUEVA COLECCION" required />
+                  </AdminField>
+                  <AdminField label="Titulo">
+                    <input value={newHeroSlide.title} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, title: e.target.value }))} placeholder="Ej: Invierno 2026" required />
+                  </AdminField>
+                  <AdminField label="Boton">
+                    <input value={newHeroSlide.cta} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, cta: e.target.value }))} required />
+                  </AdminField>
+                  <AdminField label="Orden">
+                    <input type="number" min="0" value={newHeroSlide.sort_order} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, sort_order: e.target.value }))} />
+                  </AdminField>
+                </div>
+                <div className="card-actions">
+                  <label className="btn-alt file-btn">
+                    Cargar foto
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        await setHeroSlideImage('new', e.target.files)
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                  <label className="method compact-method">
+                    <input type="checkbox" checked={Boolean(newHeroSlide.is_active)} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, is_active: e.target.checked }))} />
+                    Publicado
+                  </label>
+                  <button type="submit">Agregar slide</button>
+                </div>
+              </div>
+            </form>
+
+            <div className="carousel-admin-list">
+              {heroSlides.map((slide) => (
+                <article className={`carousel-admin-card ${removingHeroSlideId === slide.id ? 'is-removing' : ''}`} key={slide.id}>
+                  <div className="carousel-slide-preview">
+                    {slide.image ? (
+                      <img src={slide.image} alt={slide.title} />
+                    ) : (
+                      <span>Foto</span>
+                    )}
+                  </div>
+                  <div className="carousel-slide-fields">
+                    <div className="admin-form-grid">
+                      <AdminField label="Etiqueta">
+                        <input value={slide.eyebrow || ''} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, eyebrow: e.target.value } : item))} />
+                      </AdminField>
+                      <AdminField label="Titulo">
+                        <input value={slide.title || ''} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, title: e.target.value } : item))} />
+                      </AdminField>
+                      <AdminField label="Boton">
+                        <input value={slide.cta || ''} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, cta: e.target.value } : item))} />
+                      </AdminField>
+                      <AdminField label="Orden">
+                        <input type="number" min="0" value={slide.sort_order ?? 0} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, sort_order: e.target.value } : item))} />
+                      </AdminField>
+                    </div>
+                    <div className="card-actions">
+                      <label className="btn-alt file-btn">
+                        Cambiar foto
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            await setHeroSlideImage(slide.id, e.target.files)
+                            e.target.value = ''
+                          }}
+                        />
+                      </label>
+                      <label className="method compact-method">
+                        <input type="checkbox" checked={Boolean(slide.is_active)} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, is_active: e.target.checked } : item))} />
+                        Publicado
+                      </label>
+                      <button type="button" onClick={() => onUpdateHeroSlide(slide)}>Guardar cambios</button>
+                      <button type="button" className="btn-danger" onClick={() => onDeleteHeroSlide(slide.id)}>Eliminar</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+              {heroSlides.length === 0 && <span className="muted">Sin slides cargados</span>}
+            </div>
           </section>
         ) : (
           <section className="panel">
@@ -961,17 +1097,6 @@ export default function AdminDashboardPage() {
                         <span className="muted">Sin fotos cargadas</span>
                       )}
                 </div>
-                <span className="image-editor-note">Fotos cargadas como miniaturas. Agrega URLs externas solo si las necesitas.</span>
-                <AdminField label="URLs externas">
-                  <textarea
-                    value={productImagesText(newProduct.images || [])}
-                    onChange={(e) => setNewProduct((prev) => ({
-                      ...prev,
-                      images: mergeExternalImageText(prev.images || [], e.target.value, prev.name),
-                    }))}
-                    placeholder="Una URL por linea"
-                  />
-                </AdminField>
                 <div className="card-actions">
                   <label className="btn-alt file-btn">
                     Cargar fotos

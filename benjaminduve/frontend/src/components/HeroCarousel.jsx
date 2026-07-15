@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { storeApi } from '../api/storeApi'
 import './HeroCarousel.css'
 
-const SLIDES = [
+const FALLBACK_SLIDES = [
   {
     id: 'invierno',
-    eyebrow: 'NUEVA COLECCIÓN',
+    eyebrow: 'NUEVA COLECCION',
     title: 'Invierno 2026',
-    cta: 'Ver catálogo →',
+    cta: 'Ver catalogo',
     gradient: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%)',
     image: '/bolsonegro.jpeg',
   },
@@ -14,15 +15,15 @@ const SLIDES = [
     id: 'bolsos',
     eyebrow: 'HECHO A MANO',
     title: 'Bolsos & Mochilas',
-    cta: 'Descubrir →',
+    cta: 'Descubrir',
     gradient: 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)',
     image: '/bolsomulti.jpeg',
   },
   {
     id: 'artesanal',
-    eyebrow: 'EDICIÓN LIMITADA',
+    eyebrow: 'EDICION LIMITADA',
     title: 'Calidad Artesanal',
-    cta: 'Explorar →',
+    cta: 'Explorar',
     gradient: 'linear-gradient(135deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.7) 100%)',
     image: '/bolsorosa.jpeg',
   },
@@ -31,25 +32,50 @@ const SLIDES = [
 const AUTOPLAY_MS = 5000
 
 export default function HeroCarousel() {
+  const [slides, setSlides] = useState(FALLBACK_SLIDES)
   const [activeIndex, setActiveIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const regionRef = useRef(null)
-  const total = SLIDES.length
+  const total = slides.length
 
   const goTo = useCallback((index) => {
+    if (total === 0) return
     setActiveIndex(((index % total) + total) % total)
   }, [total])
 
   const goNext = useCallback(() => {
+    if (total === 0) return
     setActiveIndex((current) => (current + 1) % total)
   }, [total])
 
   const goPrev = useCallback(() => {
+    if (total === 0) return
     setActiveIndex((current) => (current - 1 + total) % total)
   }, [total])
 
   useEffect(() => {
-    if (paused) return undefined
+    let mounted = true
+
+    storeApi.listHeroSlides()
+      .then((response) => {
+        if (!mounted) return
+        const apiSlides = (response.data || []).filter((slide) => slide.image)
+        setSlides(apiSlides.map((slide, index) => ({
+          ...slide,
+          id: slide.id || `slide-${index}`,
+          gradient: 'linear-gradient(135deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.72) 100%)',
+        })))
+        setActiveIndex(0)
+      })
+      .catch(() => {})
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (paused || total <= 1) return undefined
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion) return undefined
@@ -84,6 +110,8 @@ export default function HeroCarousel() {
     document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  if (total === 0) return null
+
   return (
     <section
       ref={regionRef}
@@ -102,7 +130,7 @@ export default function HeroCarousel() {
       }}
     >
       <div className="hero-carousel-track">
-        {SLIDES.map((slide, index) => (
+        {slides.map((slide, index) => (
           <article
             key={slide.id}
             className={`hero-carousel-slide ${index === activeIndex ? 'is-active' : ''}`}
@@ -122,43 +150,49 @@ export default function HeroCarousel() {
               <span className="hero-carousel-eyebrow">{slide.eyebrow}</span>
               <h2>{slide.title}</h2>
               <button type="button" className="hero-carousel-cta" onClick={scrollToCatalog}>
-                {slide.cta}
+                {slide.cta} <span aria-hidden="true">-&gt;</span>
               </button>
             </div>
           </article>
         ))}
       </div>
 
-      <button
-        type="button"
-        className="hero-carousel-control hero-carousel-control--prev"
-        onClick={goPrev}
-        aria-label="Slide anterior"
-      >
-        ‹
-      </button>
-      <button
-        type="button"
-        className="hero-carousel-control hero-carousel-control--next"
-        onClick={goNext}
-        aria-label="Slide siguiente"
-      >
-        ›
-      </button>
-
-      <div className="hero-carousel-dots" role="tablist" aria-label="Seleccionar slide">
-        {SLIDES.map((slide, index) => (
+      {total > 1 && (
+        <>
           <button
-            key={slide.id}
             type="button"
-            role="tab"
-            className={`hero-carousel-dot ${index === activeIndex ? 'is-active' : ''}`}
-            aria-label={`Ir al slide ${index + 1}: ${slide.title}`}
-            aria-selected={index === activeIndex}
-            onClick={() => goTo(index)}
-          />
-        ))}
-      </div>
+            className="hero-carousel-control hero-carousel-control--prev"
+            onClick={goPrev}
+            aria-label="Slide anterior"
+          >
+            &lsaquo;
+          </button>
+          <button
+            type="button"
+            className="hero-carousel-control hero-carousel-control--next"
+            onClick={goNext}
+            aria-label="Slide siguiente"
+          >
+            &rsaquo;
+          </button>
+        </>
+      )}
+
+      {total > 1 && (
+        <div className="hero-carousel-dots" role="tablist" aria-label="Seleccionar slide">
+          {slides.map((slide, index) => (
+            <button
+              key={slide.id}
+              type="button"
+              role="tab"
+              className={`hero-carousel-dot ${index === activeIndex ? 'is-active' : ''}`}
+              aria-label={`Ir al slide ${index + 1}: ${slide.title}`}
+              aria-selected={index === activeIndex}
+              onClick={() => goTo(index)}
+            />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

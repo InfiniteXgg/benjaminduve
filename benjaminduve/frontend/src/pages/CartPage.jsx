@@ -91,7 +91,7 @@ export default function CartPage() {
     <div className="app-shell">
       <PublicHeader />
       <main className="container">
-        <NoticeBanner message={notice} tone="error" />
+        <NoticeBanner message={notice} tone={noticeTone} />
         <section className="panel">
           <h2>Carrito</h2>
           {items.length === 0 ? (
