@@ -1846,3 +1846,43 @@ outes/api.php):
   - Pasarela de pago real (actualmente placeholder).
   - Sistema de cuentas de usuario (registro, login, historial de pedidos, direcciones).
   - Revisión de bugs post-rediseño.
+
+### 2026-07-15 — Carrusel administrable y limpieza de carga por URL
+- Solicitud del usuario:
+  - quitar el hardcode del carrusel principal y permitir editar fotos/textos desde el dashboard admin.
+  - eliminar la opcion de cargar fotos por URL externa en admin.
+  - reconstruir Docker si hace falta, repoblar base de datos y validar bugs.
+- Backend:
+  - nueva tabla `hero_carousel_slides` con `eyebrow`, `title`, `cta`, `image`, `sort_order` e `is_active`.
+  - nuevo modelo `App\Models\HeroCarouselSlide`.
+  - nuevo seeder `HeroCarouselSlidesSeeder` con 3 slides iniciales del hero.
+  - `DatabaseSeeder` ahora ejecuta tambien el seeder del carrusel.
+  - API publica `GET /api/hero-slides` para que el carrusel lea contenido desde BD.
+  - API admin protegida por Sanctum:
+    - `GET /api/admin/hero-slides`
+    - `POST /api/admin/hero-slides`
+    - `PUT /api/admin/hero-slides/{slide}`
+    - `DELETE /api/admin/hero-slides/{slide}`
+  - validacion de imagenes restringida a data URLs cargadas desde archivo o assets locales del sitio; se deja de aceptar URL externa en el flujo de imagenes.
+- Frontend:
+  - `HeroCarousel.jsx` deja de usar slides hardcodeados como fuente principal y consulta `storeApi.listHeroSlides()`, con fallback local solo si la API no responde.
+  - `AdminHeader.jsx` agrega pestaña `Carrusel`.
+  - `AdminDashboardPage.jsx` agrega pantalla para crear, editar, publicar/ocultar, ordenar, eliminar y cambiar foto de slides.
+  - se elimina el textarea de "URLs externas" en crear/editar productos; las fotos se cargan desde archivo y se muestran como miniaturas.
+  - al eliminar imagenes de productos persistidas, ahora se usa el endpoint de borrado sin depender de si la fuente era embebida o externa.
+  - `styles.css` e `index.css` agregan estilos responsivos para tarjetas de administracion del carrusel.
+  - `frontend/index.html` sube cache-buster de estilos/script.
+- Ajustes de verificacion:
+  - `CartPage.jsx` usa el tono real del aviso en `NoticeBanner`.
+  - `PreCheckoutPage.jsx` elimina estado calculado sin uso.
+  - `tests/Feature/ExampleTest.php` se actualiza para esperar la redireccion real de `/` hacia el frontend React.
+- Docker/base de datos:
+  - se ejecuto `docker compose up -d --build`; el comando excedio timeout del cliente, pero los servicios quedaron reconstruidos/levantados.
+  - se ejecuto `docker compose exec -T app php artisan migrate:fresh --seed --force`.
+  - conteos verificados: 5 productos, 10 imagenes de producto, 3 slides de carrusel y 1 admin.
+- Validacion:
+  - `php -l` OK en controladores, modelo, migracion y seeder nuevos/modificados.
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+  - `docker compose exec -T app php artisan test` OK: 4 tests pasan.
+  - `GET /api/hero-slides` responde 200 desde Docker y desde host.

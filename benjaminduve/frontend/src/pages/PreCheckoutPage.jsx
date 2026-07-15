@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PublicHeader from '../components/PublicHeader'
 import NoticeBanner from '../components/NoticeBanner'
@@ -44,16 +44,6 @@ export default function PreCheckoutPage() {
     const id = setTimeout(() => setNotice(''), 2600)
     return () => clearTimeout(id)
   }, [notice])
-
-  const requiredDraftOk = useMemo(() => {
-    return (
-      draft.customer_name.trim() !== ''
-      && draft.customer_email.trim() !== ''
-      && draft.billing_tax_id.trim() !== ''
-      && draft.billing_address.trim() !== ''
-      && draft.billing_city.trim() !== ''
-    )
-  }, [draft])
 
   const validateFields = () => {
     const nextErrors = {}

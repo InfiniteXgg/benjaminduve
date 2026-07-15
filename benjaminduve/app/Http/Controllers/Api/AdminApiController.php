@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\HeroCarouselSlide;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -228,6 +229,81 @@ class AdminApiController extends Controller
         ]);
     }
 
+    public function heroSlides(Request $request): JsonResponse
+    {
+        if (!$this->requireAdmin($request)) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $slides = HeroCarouselSlide::query()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => $slides->map(fn (HeroCarouselSlide $slide) => $this->heroSlidePayload($slide))->values(),
+        ]);
+    }
+
+    public function storeHeroSlide(Request $request): JsonResponse
+    {
+        if (!$this->requireAdmin($request)) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $data = $request->validate($this->heroSlideValidationRules(), $this->heroSlideValidationMessages());
+
+        $slide = HeroCarouselSlide::create([
+            'eyebrow' => trim((string) $data['eyebrow']),
+            'title' => trim((string) $data['title']),
+            'cta' => trim((string) $data['cta']),
+            'image' => trim((string) $data['image']),
+            'sort_order' => (int) ($data['sort_order'] ?? HeroCarouselSlide::max('sort_order') + 1),
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+
+        return response()->json([
+            'message' => 'Slide creado correctamente.',
+            'data' => $this->heroSlidePayload($slide),
+        ], 201);
+    }
+
+    public function updateHeroSlide(Request $request, HeroCarouselSlide $slide): JsonResponse
+    {
+        if (!$this->requireAdmin($request)) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $data = $request->validate($this->heroSlideValidationRules(), $this->heroSlideValidationMessages());
+
+        $slide->update([
+            'eyebrow' => trim((string) $data['eyebrow']),
+            'title' => trim((string) $data['title']),
+            'cta' => trim((string) $data['cta']),
+            'image' => trim((string) $data['image']),
+            'sort_order' => (int) ($data['sort_order'] ?? $slide->sort_order),
+            'is_active' => (bool) ($data['is_active'] ?? false),
+        ]);
+
+        return response()->json([
+            'message' => 'Slide actualizado.',
+            'data' => $this->heroSlidePayload($slide->fresh()),
+        ]);
+    }
+
+    public function deleteHeroSlide(Request $request, HeroCarouselSlide $slide): JsonResponse
+    {
+        if (!$this->requireAdmin($request)) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $slide->delete();
+
+        return response()->json([
+            'message' => 'Slide eliminado.',
+        ]);
+    }
+
     public function orders(Request $request): JsonResponse
     {
         if (!$this->requireAdmin($request)) {
@@ -426,7 +502,39 @@ class AdminApiController extends Controller
             'stock.required' => 'El stock es obligatorio.',
             'images.max' => 'Puedes guardar hasta 8 fotos por producto.',
             'images.*.url.max' => 'Una de las fotos es demasiado pesada. Prueba con una imagen mas liviana.',
-            'images.*.url.required_with' => 'Cada foto necesita una URL valida.',
+            'images.*.url.required_with' => 'Cada foto necesita una fuente de imagen valida.',
+        ];
+    }
+
+    private function heroSlideValidationRules(): array
+    {
+        return [
+            'eyebrow' => ['required', 'string', 'max:80'],
+            'title' => ['required', 'string', 'max:120'],
+            'cta' => ['required', 'string', 'max:80'],
+            'image' => [
+                'required',
+                'string',
+                'max:2500000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (!$this->isSupportedImageSource((string) $value)) {
+                        $fail('La foto debe ser una imagen cargada desde el equipo o un asset local del sitio.');
+                    }
+                },
+            ],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+        ];
+    }
+
+    private function heroSlideValidationMessages(): array
+    {
+        return [
+            'eyebrow.required' => 'La etiqueta superior del slide es obligatoria.',
+            'title.required' => 'El titulo del slide es obligatorio.',
+            'cta.required' => 'El texto del boton del slide es obligatorio.',
+            'image.required' => 'La foto del slide es obligatoria.',
+            'image.max' => 'La foto del slide es demasiado pesada. Prueba con una imagen mas liviana.',
         ];
     }
 
@@ -486,7 +594,20 @@ class AdminApiController extends Controller
     private function isSupportedImageSource(string $url): bool
     {
         return str_starts_with($url, 'data:image/')
-            || filter_var($url, FILTER_VALIDATE_URL) !== false;
+            || preg_match('/^\/[A-Za-z0-9_\-\/.]+\.(jpe?g|png|webp|gif|svg)$/i', $url) === 1;
+    }
+
+    private function heroSlidePayload(HeroCarouselSlide $slide): array
+    {
+        return [
+            'id' => $slide->id,
+            'eyebrow' => $slide->eyebrow,
+            'title' => $slide->title,
+            'cta' => $slide->cta,
+            'image' => $slide->image,
+            'sort_order' => (int) $slide->sort_order,
+            'is_active' => (bool) $slide->is_active,
+        ];
     }
 
     private function lowStockProductPayload(Product $product): array

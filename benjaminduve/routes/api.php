@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/products', [StoreApiController::class, 'products']);
 Route::get('/products/{slug}', [StoreApiController::class, 'productShow']);
+Route::get('/hero-slides', [StoreApiController::class, 'heroSlides']);
 
 Route::post('/orders', [StoreApiController::class, 'createOrder'])->middleware('throttle:60,1');
 Route::post('/orders/{order}/payment', [StoreApiController::class, 'submitPayment'])->middleware('throttle:60,1');
@@ -28,6 +29,11 @@ Route::prefix('admin')->group(function () {
         Route::put('/products/{id}', [AdminApiController::class, 'updateProduct']);
         Route::delete('/products/{id}', [AdminApiController::class, 'deleteProduct']);
         Route::delete('/products/{id}/images/{image}', [AdminApiController::class, 'deleteProductImage']);
+
+        Route::get('/hero-slides', [AdminApiController::class, 'heroSlides']);
+        Route::post('/hero-slides', [AdminApiController::class, 'storeHeroSlide']);
+        Route::put('/hero-slides/{slide}', [AdminApiController::class, 'updateHeroSlide']);
+        Route::delete('/hero-slides/{slide}', [AdminApiController::class, 'deleteHeroSlide']);
 
         Route::get('/orders', [AdminApiController::class, 'orders']);
         Route::post('/orders/{order}/accept', [AdminApiController::class, 'acceptOrder']);

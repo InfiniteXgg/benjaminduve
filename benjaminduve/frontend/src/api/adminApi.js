@@ -46,6 +46,26 @@ export const adminApi = {
     return data
   },
 
+  async listHeroSlides() {
+    const { data } = await api.get('/admin/hero-slides')
+    return data
+  },
+
+  async createHeroSlide(payload) {
+    const { data } = await api.post('/admin/hero-slides', payload)
+    return data
+  },
+
+  async updateHeroSlide(slideId, payload) {
+    const { data } = await api.put(`/admin/hero-slides/${slideId}`, payload)
+    return data
+  },
+
+  async deleteHeroSlide(slideId) {
+    const { data } = await api.delete(`/admin/hero-slides/${slideId}`)
+    return data
+  },
+
   async listOrders(params = {}) {
     const { data } = await api.get('/admin/orders', { params })
     return data
@@ -68,4 +88,3 @@ export const adminApi = {
     return data
   },
 }
-

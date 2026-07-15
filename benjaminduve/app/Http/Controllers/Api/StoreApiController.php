@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\HeroCarouselSlide;
 use App\Models\Order;
 use App\Models\Product;
 use App\Rules\ValidRut;
@@ -62,6 +63,19 @@ class StoreApiController extends Controller
 
         return response()->json([
             'data' => $this->productPayload($product),
+        ]);
+    }
+
+    public function heroSlides(): JsonResponse
+    {
+        $slides = HeroCarouselSlide::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => $slides->map(fn (HeroCarouselSlide $slide) => $this->heroSlidePayload($slide))->values(),
         ]);
     }
 
@@ -324,6 +338,18 @@ class StoreApiController extends Controller
                     'alt' => $image->alt ?: $product->name,
                 ])
                 ->values(),
+        ];
+    }
+
+    private function heroSlidePayload(HeroCarouselSlide $slide): array
+    {
+        return [
+            'id' => $slide->id,
+            'eyebrow' => $slide->eyebrow,
+            'title' => $slide->title,
+            'cta' => $slide->cta,
+            'image' => $slide->image,
+            'sort_order' => (int) $slide->sort_order,
         ];
     }
 

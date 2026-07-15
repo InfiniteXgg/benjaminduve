@@ -29,6 +29,9 @@ export default function AdminHeader({ tab, onChangeTab, onLogout, lowStockProduc
           <button className={`nav-btn ${tab === 'products' ? 'active' : ''}`} onClick={() => onChangeTab('products')}>
             Productos
           </button>
+          <button className={`nav-btn ${tab === 'carousel' ? 'active' : ''}`} onClick={() => onChangeTab('carousel')}>
+            Carrusel
+          </button>
           <button className={`nav-btn ${tab === 'orders' ? 'active' : ''}`} onClick={() => onChangeTab('orders')}>
             Pedidos
           </button>
