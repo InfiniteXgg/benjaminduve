@@ -1,8 +1,8 @@
 .hero-carousel {
   position: relative;
   width: 100%;
-  height: var(--layout-hero-height-mobile, 60vh);
-  min-height: var(--layout-hero-min-height, 320px);
+  height: clamp(300px, 52vh, 420px);
+  min-height: 300px;
   overflow: hidden;
   outline: none;
 }
@@ -39,6 +39,13 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
+}
+
+.hero-carousel-bg.is-cropped {
+  inset: auto;
+  max-width: none;
+  max-height: none;
+  object-fit: fill;
 }
 
 .hero-carousel-overlay {
@@ -174,6 +181,7 @@
 @media (min-width: 768px) {
   .hero-carousel {
     height: var(--layout-hero-height-desktop, 80vh);
+    min-height: var(--layout-hero-min-height, 320px);
   }
 
   .hero-carousel-content {

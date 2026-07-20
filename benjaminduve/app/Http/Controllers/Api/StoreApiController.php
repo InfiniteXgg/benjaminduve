@@ -69,6 +69,7 @@ class StoreApiController extends Controller
     public function heroSlides(): JsonResponse
     {
         $slides = HeroCarouselSlide::query()
+            ->with(['product.images'])
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -349,7 +350,15 @@ class StoreApiController extends Controller
             'title' => $slide->title,
             'cta' => $slide->cta,
             'image' => $slide->image,
+            'image_width' => $slide->image_width,
+            'image_height' => $slide->image_height,
+            'crop_focus_x' => (float) ($slide->crop_focus_x ?? 0.5),
+            'crop_focus_y' => (float) ($slide->crop_focus_y ?? 0.5),
+            'crop_zoom' => (float) ($slide->crop_zoom ?? 1),
             'sort_order' => (int) $slide->sort_order,
+            'product' => $slide->product && $slide->product->is_active
+                ? $this->productPayload($slide->product)
+                : null,
         ];
     }
 

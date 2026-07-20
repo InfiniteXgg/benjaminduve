@@ -31,10 +31,37 @@ const FALLBACK_SLIDES = [
 
 const AUTOPLAY_MS = 5000
 
-export default function HeroCarousel() {
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function heroImageStyle(slide, frame) {
+  if (!slide.image_width || !slide.image_height || !frame.width || !frame.height) return null
+
+  const imageWidth = Number(slide.image_width)
+  const imageHeight = Number(slide.image_height)
+  const zoom = Number(slide.crop_zoom ?? 1)
+  const scale = Math.max(frame.width / imageWidth, frame.height / imageHeight) * zoom
+  const scaledWidth = imageWidth * scale
+  const scaledHeight = imageHeight * scale
+  const focusX = Number(slide.crop_focus_x ?? 0.5)
+  const focusY = Number(slide.crop_focus_y ?? 0.5)
+  const left = (frame.width / 2) - (focusX * scaledWidth)
+  const top = (frame.height / 2) - (focusY * scaledHeight)
+
+  return {
+    width: `${scaledWidth}px`,
+    height: `${scaledHeight}px`,
+    left: `${clamp(left, frame.width - scaledWidth, 0)}px`,
+    top: `${clamp(top, frame.height - scaledHeight, 0)}px`,
+  }
+}
+
+export default function HeroCarousel({ onProductClick }) {
   const [slides, setSlides] = useState(FALLBACK_SLIDES)
   const [activeIndex, setActiveIndex] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [carouselSize, setCarouselSize] = useState({ width: 0, height: 0 })
   const regionRef = useRef(null)
   const total = slides.length
 
@@ -91,6 +118,16 @@ export default function HeroCarousel() {
     const node = regionRef.current
     if (!node) return undefined
 
+    const updateSize = () => {
+      const rect = node.getBoundingClientRect()
+      setCarouselSize({ width: rect.width, height: rect.height })
+    }
+    updateSize()
+
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateSize) : null
+    observer?.observe(node)
+    window.addEventListener('resize', updateSize)
+
     const onKeyDown = (event) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
@@ -103,11 +140,24 @@ export default function HeroCarousel() {
     }
 
     node.addEventListener('keydown', onKeyDown)
-    return () => node.removeEventListener('keydown', onKeyDown)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', updateSize)
+      node.removeEventListener('keydown', onKeyDown)
+    }
   }, [goNext, goPrev])
 
   const scrollToCatalog = () => {
     document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleCtaClick = (slide) => {
+    if (slide.product && typeof onProductClick === 'function') {
+      onProductClick(slide.product)
+      return
+    }
+
+    scrollToCatalog()
   }
 
   if (total === 0) return null
@@ -131,29 +181,35 @@ export default function HeroCarousel() {
     >
       <div className="hero-carousel-track">
         {slides.map((slide, index) => (
-          <article
-            key={slide.id}
-            className={`hero-carousel-slide ${index === activeIndex ? 'is-active' : ''}`}
-            style={{ '--hero-slide-gradient': slide.gradient }}
-            aria-hidden={index !== activeIndex}
-          >
-            {slide.image && (
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="hero-carousel-bg"
-                loading={index === 0 ? 'eager' : 'lazy'}
-              />
-            )}
-            <div className="hero-carousel-overlay" aria-hidden="true" />
-            <div className="hero-carousel-content">
-              <span className="hero-carousel-eyebrow">{slide.eyebrow}</span>
-              <h2>{slide.title}</h2>
-              <button type="button" className="hero-carousel-cta" onClick={scrollToCatalog}>
-                {slide.cta} <span aria-hidden="true">-&gt;</span>
-              </button>
-            </div>
-          </article>
+          (() => {
+            const cropStyle = heroImageStyle(slide, carouselSize)
+            return (
+              <article
+                key={slide.id}
+                className={`hero-carousel-slide ${index === activeIndex ? 'is-active' : ''}`}
+                style={{ '--hero-slide-gradient': slide.gradient }}
+                aria-hidden={index !== activeIndex}
+              >
+                {slide.image && (
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    className={`hero-carousel-bg ${cropStyle ? 'is-cropped' : ''}`}
+                    style={cropStyle || undefined}
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                  />
+                )}
+                <div className="hero-carousel-overlay" aria-hidden="true" />
+                <div className="hero-carousel-content">
+                  <span className="hero-carousel-eyebrow">{slide.eyebrow}</span>
+                  <h2>{slide.title}</h2>
+                  <button type="button" className="hero-carousel-cta" onClick={() => handleCtaClick(slide)}>
+                    {slide.cta}
+                  </button>
+                </div>
+              </article>
+            )
+          })()
         ))}
       </div>
 

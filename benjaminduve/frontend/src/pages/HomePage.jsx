@@ -46,6 +46,7 @@ export default function HomePage() {
   const [searchPanelOpen, setSearchPanelOpen] = useState(false)
   const [searchPanelClosing, setSearchPanelClosing] = useState(false)
   const [searchPanelCloseTimeout, setSearchPanelCloseTimeout] = useState(null)
+  const catalogSectionRef = useRef(null)
   const searchPanelRef = useRef(null)
   const searchInputRef = useRef(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -56,6 +57,7 @@ export default function HomePage() {
 
   const search = params.get('q') || ''
   const page = Number(params.get('page') || 1)
+  const isSearchActive = search.trim() !== '' || searchDraft.trim() !== ''
 
   useEffect(() => {
     setSearchDraft(search)
@@ -119,6 +121,14 @@ export default function HomePage() {
 
     return () => clearTimeout(id)
   }, [searchDraft, search, setParams])
+
+  useEffect(() => {
+    if (!search.trim() || loading) return
+
+    window.requestAnimationFrame(() => {
+      catalogSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [search, loading, resultsAnimationKey])
 
   const openSearchPanel = () => {
     if (searchPanelCloseTimeout) clearTimeout(searchPanelCloseTimeout)
@@ -374,8 +384,8 @@ export default function HomePage() {
         </div>,
         document.body
       )}
-      <HeroCarousel />
-      <main className="container">
+      {!isSearchActive && <HeroCarousel onProductClick={openProductModal} />}
+      <main id="catalogo" ref={catalogSectionRef} className={`container ${isSearchActive ? 'container--searching' : ''}`}>
         <NoticeBanner message={notice} tone={noticeTone} />
 
         {showInitialLoading ? (
@@ -385,7 +395,7 @@ export default function HomePage() {
         ) : (
           <section className="catalog-section">
             <h2 className="catalog-section-title">Catálogo</h2>
-            <div id="catalogo" className="grid catalog-results" key={resultsAnimationKey}>
+            <div className="grid catalog-results" key={resultsAnimationKey}>
               {products.map((product) => (
                 <article key={product.id} className="card catalog-card">
                   <div className="catalog-card-media">

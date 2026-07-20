@@ -106,7 +106,8 @@ class AdminApiController extends Controller
             });
         }
 
-        $products = $query->latest()->paginate(12);
+        $perPage = min(100, max(1, (int) $request->query('per_page', 12)));
+        $products = $query->latest()->paginate($perPage);
 
         return response()->json([
             'data' => $products->map(fn (Product $product) => $this->productPayload($product))->values(),
@@ -236,6 +237,7 @@ class AdminApiController extends Controller
         }
 
         $slides = HeroCarouselSlide::query()
+            ->with('product')
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
@@ -258,6 +260,12 @@ class AdminApiController extends Controller
             'title' => trim((string) $data['title']),
             'cta' => trim((string) $data['cta']),
             'image' => trim((string) $data['image']),
+            'image_width' => $data['image_width'] ?? null,
+            'image_height' => $data['image_height'] ?? null,
+            'crop_focus_x' => (float) ($data['crop_focus_x'] ?? 0.5),
+            'crop_focus_y' => (float) ($data['crop_focus_y'] ?? 0.5),
+            'crop_zoom' => (float) ($data['crop_zoom'] ?? 1),
+            'product_id' => $data['product_id'] ?? null,
             'sort_order' => (int) ($data['sort_order'] ?? HeroCarouselSlide::max('sort_order') + 1),
             'is_active' => (bool) ($data['is_active'] ?? true),
         ]);
@@ -281,6 +289,12 @@ class AdminApiController extends Controller
             'title' => trim((string) $data['title']),
             'cta' => trim((string) $data['cta']),
             'image' => trim((string) $data['image']),
+            'image_width' => $data['image_width'] ?? null,
+            'image_height' => $data['image_height'] ?? null,
+            'crop_focus_x' => (float) ($data['crop_focus_x'] ?? 0.5),
+            'crop_focus_y' => (float) ($data['crop_focus_y'] ?? 0.5),
+            'crop_zoom' => (float) ($data['crop_zoom'] ?? 1),
+            'product_id' => $data['product_id'] ?? null,
             'sort_order' => (int) ($data['sort_order'] ?? $slide->sort_order),
             'is_active' => (bool) ($data['is_active'] ?? false),
         ]);
@@ -522,6 +536,12 @@ class AdminApiController extends Controller
                     }
                 },
             ],
+            'image_width' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'image_height' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'crop_focus_x' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'crop_focus_y' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'crop_zoom' => ['nullable', 'numeric', 'min:1', 'max:3'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ];
@@ -535,6 +555,7 @@ class AdminApiController extends Controller
             'cta.required' => 'El texto del boton del slide es obligatorio.',
             'image.required' => 'La foto del slide es obligatoria.',
             'image.max' => 'La foto del slide es demasiado pesada. Prueba con una imagen mas liviana.',
+            'product_id.exists' => 'El producto ligado al slide no existe.',
         ];
     }
 
@@ -605,6 +626,13 @@ class AdminApiController extends Controller
             'title' => $slide->title,
             'cta' => $slide->cta,
             'image' => $slide->image,
+            'image_width' => $slide->image_width,
+            'image_height' => $slide->image_height,
+            'crop_focus_x' => (float) ($slide->crop_focus_x ?? 0.5),
+            'crop_focus_y' => (float) ($slide->crop_focus_y ?? 0.5),
+            'crop_zoom' => (float) ($slide->crop_zoom ?? 1),
+            'product_id' => $slide->product_id,
+            'product_name' => $slide->product?->name,
             'sort_order' => (int) $slide->sort_order,
             'is_active' => (bool) $slide->is_active,
         ];
