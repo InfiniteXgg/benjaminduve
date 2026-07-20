@@ -15,6 +15,7 @@ class HeroCarouselSlidesSeeder extends Seeder
                 'title' => 'Invierno 2026',
                 'cta' => 'Ver catalogo',
                 'image' => '/bolsonegro.jpeg',
+                'product_id' => null,
                 'sort_order' => 0,
             ],
             [
@@ -22,6 +23,7 @@ class HeroCarouselSlidesSeeder extends Seeder
                 'title' => 'Bolsos & Mochilas',
                 'cta' => 'Descubrir',
                 'image' => '/bolsomulti.jpeg',
+                'product_id' => null,
                 'sort_order' => 1,
             ],
             [
@@ -29,6 +31,7 @@ class HeroCarouselSlidesSeeder extends Seeder
                 'title' => 'Calidad Artesanal',
                 'cta' => 'Explorar',
                 'image' => '/bolsorosa.jpeg',
+                'product_id' => null,
                 'sort_order' => 2,
             ],
         ];

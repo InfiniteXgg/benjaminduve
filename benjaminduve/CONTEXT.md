@@ -1886,3 +1886,194 @@ outes/api.php):
   - `docker compose exec -T frontend npm run build` OK.
   - `docker compose exec -T app php artisan test` OK: 4 tests pasan.
   - `GET /api/hero-slides` responde 200 desde Docker y desde host.
+
+### 2026-07-17 — Recorte/zoom del carrusel y CTA ligado a producto
+- Solicitud del usuario:
+  - al cargar fotos del carrusel, permitir recortar de forma personalizada y controlar zoom/encuadre.
+  - hacer mas ancha la interfaz de recorte, mantener fijo el marco al hacer zoom y oscurecer la parte no seleccionada.
+  - quitar la flecha `->` del boton clickeable del carrusel.
+  - permitir ligar opcionalmente un articulo existente al boton del slide para que abra ese producto como si se presionara en el catalogo.
+- Backend:
+  - nueva migracion `2026_07_17_000000_add_product_id_to_hero_carousel_slides_table.php`.
+  - `hero_carousel_slides` ahora tiene `product_id` nullable con FK a `products` y `nullOnDelete`.
+  - `HeroCarouselSlide` agrega `product_id` en `fillable` y relacion `product()`.
+  - API admin de slides acepta/retorna `product_id` y `product_name`.
+  - API publica de slides carga `product.images` y retorna el producto activo ligado en `product`; si el producto esta inactivo o no existe, retorna `null`.
+  - endpoint admin de productos acepta `per_page` hasta 100 para alimentar el selector de articulos del carrusel.
+- Frontend:
+  - `AdminDashboardPage.jsx` agrega recortador de imagen propio para el carrusel:
+    - marco fijo 16:9 mas ancho.
+    - arrastre para mover encuadre.
+    - slider de zoom.
+    - export final por canvas a 1600x900 JPEG.
+    - zona exterior oscurecida con la misma imagen atenuada.
+  - editor de carrusel agrega selector `Articulo ligado` con opcion `Sin articulo`.
+  - `HeroCarousel.jsx` elimina la flecha visible del CTA.
+  - `HeroCarousel.jsx` acepta `onProductClick`; si el slide trae producto ligado, el CTA abre el modal del producto; si no, mantiene scroll al catalogo.
+  - `HomePage.jsx` pasa `openProductModal` al carrusel.
+  - `styles.css` e `index.css` agregan estilos del recortador y de selects admin.
+  - `frontend/index.html` sube cache-buster de estilos/script.
+- Base de datos y validacion:
+  - se ejecuto `docker compose exec -T app php artisan migrate --force`.
+  - se verifico temporalmente que `GET /api/hero-slides` puede retornar un producto ligado completo; luego se devolvio el `product_id` de prueba a `NULL`.
+  - `php -l` OK en controladores/modelo/migracion.
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+  - `docker compose exec -T app php artisan test` OK: 4 tests pasan.
+
+### 2026-07-17 — Fix arrastre del recortador de carrusel
+- Solicitud del usuario:
+  - corregir que al recortar no se podia mover la imagen para centrarla libremente.
+- Implementacion:
+  - `AdminDashboardPage.jsx` cambia el seguimiento del arrastre del recortador a `useRef`, evitando depender del estado React entre eventos rapidos de pointer/mouse.
+  - se agrega `preventDefault()` en pointer down/move para evitar seleccion/drag nativo del navegador.
+  - el recortador abre con zoom inicial `1.15` para que exista margen real de movimiento aun cuando la imagen tenga una proporcion similar al marco 16:9.
+  - el estado visual de arrastre usa `isDragging`.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-17 - Ajuste fino del recortador de carrusel
+- Solicitud del usuario:
+  - corregir que imagenes grandes no permitian desplazarse lo suficiente hacia la izquierda para encuadrar su lado derecho.
+  - centrar mejor las miniaturas/fotos del editor de carrusel en el panel admin.
+- Implementacion:
+  - `AdminDashboardPage.jsx` calcula el arrastre del recortador contra todo el rango disponible de `focusX/focusY`, permitiendo llegar a ambos bordes reales de la imagen.
+  - se agregan sliders de `Posicion horizontal` y `Posicion vertical` para ajuste fino del encuadre, ademas del zoom.
+  - `styles.css` e `index.css` centran el preview del slide con `object-position: center center` y ensanchan la grilla de controles del recortador.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Recortador de carrusel sin sliders y con vista completa
+- Solicitud del usuario:
+  - corregir el centrado de imagenes en el panel admin.
+  - permitir centrar el recorte sin depender de zoom.
+  - eliminar los sliders del recortador y controlar el encuadre arrastrando con mouse.
+  - mostrar una vista de la zona elegida como recorte respecto de la imagen completa.
+- Implementacion:
+  - `AdminDashboardPage.jsx` abre el recortador con zoom fijo `1` y quita los controles de rango de zoom/posicion.
+  - el modal agrega una vista de imagen completa con rectangulo 16:9 de seleccion y oscurecimiento solo fuera del area elegida.
+  - el preview principal del recorte sigue siendo el resultado final exportado a 1600x900 y se ajusta arrastrando la imagen.
+  - `styles.css` e `index.css` cambian las miniaturas del editor de carrusel a `object-fit: contain` y mantienen centrado real con `object-position: center center`.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Recortador centrado en pantalla y preview grande
+- Solicitud del usuario:
+  - evitar que al seleccionar una foto haya que desplazarse hasta arriba para ver la herramienta de recorte.
+  - agrandar la vista previa del recorte para que refleje mejor como se vera en el carrusel real.
+- Implementacion:
+  - `AdminDashboardPage.jsx` usa una clase propia `hero-crop-overlay` para el modal del recortador, separandolo de `admin-create-overlay`.
+  - `styles.css` e `index.css` centran el modal del recortador en el viewport actual con overlay fijo y scroll propio.
+  - se refuerza el selector `.modal-card.hero-cropper-card` para que el modal generico no reduzca el ancho/alto del recortador.
+  - el layout del recortador pone la vista 16:9 grande arriba y la vista de imagen completa con rectangulo de seleccion debajo.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Layout del editor de carrusel sin solapamientos
+- Solicitud del usuario:
+  - corregir que las imagenes de la seccion Carrusel del admin se veian mal centradas y chocaban con los textos/campos.
+- Implementacion:
+  - `styles.css` e `index.css` cambian la grilla de `.carousel-admin-card` a una columna estable de miniatura (`minmax(240px, 300px)`) y una columna de campos `minmax(0, 1fr)`.
+  - `.carousel-slide-preview` deja de estirarse segun la altura del formulario y conserva un marco 16:9 por ancho, evitando que invada la columna de texto.
+  - `.carousel-slide-fields`, sus campos y acciones reciben `min-width: 0` para prevenir overflow dentro del grid.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Vista completa del recortador sin deformacion
+- Solicitud del usuario:
+  - evitar que la imagen completa de referencia en la vista previa del recorte se vea achatada y poco profesional.
+- Implementacion:
+  - `styles.css` e `index.css` ajustan `.hero-crop-overview-canvas` para que use alto disponible, `width: auto`, `max-width: 100%` y respete el `aspect-ratio` real de la imagen.
+  - la franja de referencia del recortador aumenta su alto para mostrar mejor fotos verticales u horizontales sin deformarlas.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Rehacer recorte de foto del carrusel
+- Solicitud del usuario:
+  - agregar una opcion para volver a recortar la foto existente del carrusel si el recorte quedo mal, sin tener que volver a elegir el archivo.
+- Implementacion:
+  - `AdminDashboardPage.jsx` agrega botones `Recortar de nuevo` en el slide nuevo y en cada slide existente cuando hay imagen.
+  - al cargar una foto nueva se conserva temporalmente la fuente original en estado interno (`_cropSource`, `_cropWidth`, `_cropHeight`) para permitir rehacer el recorte usando la imagen completa durante la misma sesion.
+  - si no existe fuente original temporal, el recortador se reabre usando la imagen actual como fallback.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Guardar cambios condicional en carrusel admin
+- Solicitud del usuario:
+  - mostrar el boton `Guardar cambios` de cada slide solo cuando realmente haya cambios pendientes.
+- Implementacion:
+  - `AdminDashboardPage.jsx` guarda un snapshot serializado de cada slide al cargar `heroSlides`.
+  - el snapshot usa el mismo `heroSlidePayload` que se envia al backend, evitando falsos positivos por campos internos del recortador.
+  - el boton `Guardar cambios` se renderiza solo cuando el slide actual difiere de su snapshot base; despues de guardar, `loadHeroSlides()` refresca el baseline.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Recorte no destructivo del carrusel
+- Solicitud del usuario:
+  - conservar la foto original del carrusel y hacer que el recorte solo modifique como se muestra, sin sobreescribir la imagen base.
+- Backend:
+  - nueva migracion `2026_07_20_000000_add_crop_metadata_to_hero_carousel_slides_table.php`.
+  - `hero_carousel_slides` agrega `image_width`, `image_height`, `crop_focus_x`, `crop_focus_y` y `crop_zoom`.
+  - `HeroCarouselSlide` agrega esos campos en `fillable` y casts.
+  - API admin y publica retornan metadatos de recorte; create/update admin los validan y persisten.
+- Frontend:
+  - `AdminDashboardPage.jsx` deja de exportar un JPEG recortado por canvas al aplicar recorte.
+  - al seleccionar una foto se guarda como `image` la imagen base comprimida completa, junto al ancho/alto y foco del recorte.
+  - previews del admin y `HeroCarousel.jsx` aplican el encuadre con posicionamiento CSS usando los metadatos guardados.
+  - `Recortar de nuevo` reabre la imagen base con su encuadre actual, no una copia ya recortada.
+- Validacion:
+  - `php -l` OK en modelo/controladores/migracion.
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+  - `docker compose exec -T app php artisan migrate --force` OK.
+  - `docker compose exec -T app php artisan test` OK: 4 tests pasan.
+
+### 2026-07-20 - Hotfix preview recortado gigante en admin
+- Problema detectado:
+  - al guardar una foto con recorte no destructivo, la imagen del preview del carrusel admin podia aparecer gigante sobre toda la pagina.
+- Implementacion:
+  - `styles.css` e `index.css` agregan `position: relative` a `.carousel-slide-preview` para contener correctamente la imagen posicionada del recorte.
+  - `.carousel-slide-preview img.is-cropped` define `inset: auto` para depender solo de los valores inline de encuadre (`left`, `top`, `width`, `height`).
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Encadre sin achatamiento y retorno al slot
+- Solicitud del usuario:
+  - corregir que la imagen del carrusel quedaba minimamente achatada despues del recorte.
+  - al terminar el recorte, volver a centrar la pagina en el slot editado para encontrar rapido `Guardar cambios`.
+- Implementacion:
+  - `HeroCarousel.jsx` calcula el encuadre no destructivo con el tamaño real del carrusel mediante `ResizeObserver`, usando pixeles y preservando la proporcion natural de la imagen.
+  - `AdminDashboardPage.jsx` agrega `data-hero-slide-id` a cada slot y centra el slot editado con `scrollIntoView({ block: 'center' })` al aplicar el recorte.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-07-20 - Rebuild, seed y verificacion operativa
+- Acciones:
+  - se ejecuto `docker compose up -d --build`; el contenedor `app` fue reconstruido/recreado y los servicios quedaron arriba.
+  - se ejecuto `docker compose exec -T app php artisan migrate --seed --force`; no habia migraciones pendientes y se corrieron seeders (`AdminUserSeeder`, `PlaceholderProductsSeeder`, `HeroCarouselSlidesSeeder`).
+  - se verifico `GET /api/hero-slides`; responde con datos del carrusel y metadatos de recorte (`image_width`, `image_height`, `crop_focus_x`, `crop_focus_y`, `crop_zoom`).
+- Validacion:
+  - `docker compose ps` OK: app, db, frontend y phpmyadmin arriba; db healthy.
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+  - `docker compose exec -T app php artisan test` OK: 4 tests pasan.
+
+### 2026-07-20 - Ajuste de tamaño del carrusel en celulares
+- Solicitud del usuario:
+  - ajustar un poco el tamaño de las fotos del carrusel en vista mobile.
+- Implementacion:
+  - `HeroCarousel.css` cambia la altura mobile del carrusel a `clamp(300px, 52vh, 420px)` para reducir el efecto de imagen demasiado grande/zoom en pantallas angostas.
+  - desktop mantiene la altura previa con `var(--layout-hero-height-desktop, 80vh)`.
+- Validacion:
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.

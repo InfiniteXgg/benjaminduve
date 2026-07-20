@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminHeader from '../components/AdminHeader'
 import NoticeBanner from '../components/NoticeBanner'
@@ -25,9 +25,18 @@ const EMPTY_HERO_SLIDE = {
   title: '',
   cta: 'Ver catalogo',
   image: '',
+  image_width: null,
+  image_height: null,
+  crop_focus_x: 0.5,
+  crop_focus_y: 0.5,
+  crop_zoom: 1,
+  product_id: '',
   sort_order: 0,
   is_active: true,
 }
+
+const HERO_CROP_WIDTH = 1600
+const HERO_CROP_HEIGHT = 900
 
 function normalizeProductImages(images = [], productName = 'Producto') {
   return images
@@ -80,6 +89,126 @@ function compressImageFile(file, maxSize = 900, quality = 0.72) {
   })
 }
 
+function readCropImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      reject(new Error('Selecciona una imagen valida.'))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const image = new Image()
+      image.onload = () => {
+        const attempts = [
+          { maxSize: 2200, quality: 0.86 },
+          { maxSize: 1800, quality: 0.8 },
+          { maxSize: 1500, quality: 0.74 },
+          { maxSize: 1200, quality: 0.68 },
+        ]
+
+        for (const attempt of attempts) {
+          const scale = Math.min(1, attempt.maxSize / Math.max(image.width, image.height))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.max(1, Math.round(image.width * scale))
+          canvas.height = Math.max(1, Math.round(image.height * scale))
+          const context = canvas.getContext('2d')
+
+          if (!context) {
+            reject(new Error('No se pudo procesar la imagen.'))
+            return
+          }
+
+          context.drawImage(image, 0, 0, canvas.width, canvas.height)
+          const source = canvas.toDataURL('image/jpeg', attempt.quality)
+
+          if (source.length <= 2200000 || attempt === attempts[attempts.length - 1]) {
+            resolve({
+              source,
+              imageWidth: canvas.width,
+              imageHeight: canvas.height,
+            })
+            return
+          }
+        }
+      }
+      image.onerror = () => reject(new Error('No se pudo procesar una imagen.'))
+      image.src = String(reader.result || '')
+    }
+    reader.onerror = () => reject(new Error('No se pudo leer una imagen.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function readCropSource(source) {
+  return new Promise((resolve, reject) => {
+    if (!source) {
+      reject(new Error('No hay una imagen para recortar.'))
+      return
+    }
+
+    const image = new Image()
+    image.onload = () => {
+      resolve({
+        source,
+        imageWidth: image.naturalWidth || image.width,
+        imageHeight: image.naturalHeight || image.height,
+      })
+    }
+    image.onerror = () => reject(new Error('No se pudo procesar una imagen.'))
+    image.src = source
+  })
+}
+
+function cropBounds(imageWidth, imageHeight, zoom) {
+  const scale = Math.max(HERO_CROP_WIDTH / imageWidth, HERO_CROP_HEIGHT / imageHeight) * zoom
+  const scaledWidth = imageWidth * scale
+  const scaledHeight = imageHeight * scale
+  const minFocusX = Math.min(0.5, HERO_CROP_WIDTH / 2 / scaledWidth)
+  const minFocusY = Math.min(0.5, HERO_CROP_HEIGHT / 2 / scaledHeight)
+
+  return {
+    scale,
+    scaledWidth,
+    scaledHeight,
+    widthPercent: (scaledWidth / HERO_CROP_WIDTH) * 100,
+    heightPercent: (scaledHeight / HERO_CROP_HEIGHT) * 100,
+    minFocusX,
+    maxFocusX: 1 - minFocusX,
+    minFocusY,
+    maxFocusY: 1 - minFocusY,
+  }
+}
+
+function cropSelection(crop) {
+  const bounds = cropBounds(crop.imageWidth, crop.imageHeight, crop.zoom)
+  const width = HERO_CROP_WIDTH / bounds.scale
+  const height = HERO_CROP_HEIGHT / bounds.scale
+  const left = clamp((crop.focusX * crop.imageWidth) - (width / 2), 0, crop.imageWidth - width)
+  const top = clamp((crop.focusY * crop.imageHeight) - (height / 2), 0, crop.imageHeight - height)
+
+  return {
+    left: `${(left / crop.imageWidth) * 100}%`,
+    top: `${(top / crop.imageHeight) * 100}%`,
+    width: `${(width / crop.imageWidth) * 100}%`,
+    height: `${(height / crop.imageHeight) * 100}%`,
+  }
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function clampHeroCrop(crop) {
+  const bounds = cropBounds(crop.imageWidth, crop.imageHeight, crop.zoom)
+
+  return {
+    ...crop,
+    focusX: clamp(crop.focusX, bounds.minFocusX, bounds.maxFocusX),
+    focusY: clamp(crop.focusY, bounds.minFocusY, bounds.maxFocusY),
+  }
+}
+
 async function readImageFiles(files, productName = 'Producto') {
   const selectedFiles = Array.from(files || []).filter((file) => file.type.startsWith('image/')).slice(0, 8)
 
@@ -105,6 +234,51 @@ function AdminField({ label, children }) {
       {children}
     </label>
   )
+}
+
+const heroSlidePayload = (slide) => ({
+  eyebrow: slide.eyebrow,
+  title: slide.title,
+  cta: slide.cta,
+  image: slide.image,
+  image_width: slide.image_width ? Number(slide.image_width) : null,
+  image_height: slide.image_height ? Number(slide.image_height) : null,
+  crop_focus_x: Number(slide.crop_focus_x ?? 0.5),
+  crop_focus_y: Number(slide.crop_focus_y ?? 0.5),
+  crop_zoom: Number(slide.crop_zoom ?? 1),
+  product_id: slide.product_id ? Number(slide.product_id) : null,
+  sort_order: Number(slide.sort_order || 0),
+  is_active: Boolean(slide.is_active),
+})
+
+function serializeHeroSlide(slide) {
+  return JSON.stringify(heroSlidePayload(slide))
+}
+
+function heroImageStyle(slide) {
+  if (!slide.image_width || !slide.image_height) return null
+
+  const bounds = cropBounds(
+    Number(slide.image_width),
+    Number(slide.image_height),
+    Number(slide.crop_zoom ?? 1),
+  )
+  const focusX = Number(slide.crop_focus_x ?? 0.5)
+  const focusY = Number(slide.crop_focus_y ?? 0.5)
+
+  return {
+    width: `${bounds.widthPercent}%`,
+    height: `${bounds.heightPercent}%`,
+    left: `${50 - (focusX * bounds.widthPercent)}%`,
+    top: `${50 - (focusY * bounds.heightPercent)}%`,
+  }
+}
+
+function centerHeroSlideEditor(slideId) {
+  window.requestAnimationFrame(() => {
+    const node = document.querySelector(`[data-hero-slide-id="${slideId}"]`)
+    node?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
 }
 
 export default function AdminDashboardPage() {
@@ -133,8 +307,12 @@ export default function AdminDashboardPage() {
   const [dragging, setDragging] = useState(null) // { productId, index, isNew }
 
   const [heroSlides, setHeroSlides] = useState([])
+  const [heroSlideBaselines, setHeroSlideBaselines] = useState({})
   const [newHeroSlide, setNewHeroSlide] = useState(EMPTY_HERO_SLIDE)
   const [removingHeroSlideId, setRemovingHeroSlideId] = useState('')
+  const [heroCropper, setHeroCropper] = useState(null)
+  const [heroProductOptions, setHeroProductOptions] = useState([])
+  const heroCropDragRef = useRef(null)
 
   const [orders, setOrders] = useState([])
   const [orderMeta, setOrderMeta] = useState({})
@@ -198,7 +376,14 @@ export default function AdminDashboardPage() {
 
   const loadHeroSlides = async () => {
     const response = await adminApi.listHeroSlides()
-    setHeroSlides(response.data || [])
+    const slides = response.data || []
+    setHeroSlides(slides)
+    setHeroSlideBaselines(Object.fromEntries(slides.map((slide) => [slide.id, serializeHeroSlide(slide)])))
+  }
+
+  const loadHeroProductOptions = async () => {
+    const response = await adminApi.listProducts({ per_page: 100 })
+    setHeroProductOptions(response.data || [])
   }
 
   const addImagesToProduct = async (productId, files) => {
@@ -229,19 +414,140 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const setHeroSlideImage = async (slideId, files) => {
+  const openHeroCropper = async (slideId, files) => {
     try {
-      const [image] = await readImageFiles(files, 'Slide')
-      if (!image) return
+      const [file] = Array.from(files || [])
+      if (!file) return
+      const image = await readCropImage(file)
 
-      if (slideId === 'new') {
-        setNewHeroSlide((prev) => ({ ...prev, image: image.url }))
+      setHeroCropper({
+        targetId: slideId,
+        source: image.source,
+        imageWidth: image.imageWidth,
+        imageHeight: image.imageHeight,
+        originalSource: image.source,
+        originalWidth: image.imageWidth,
+        originalHeight: image.imageHeight,
+        zoom: 1,
+        focusX: 0.5,
+        focusY: 0.5,
+        isDragging: false,
+      })
+    } catch (error) {
+      showNotice(error.message, 'error')
+    }
+  }
+
+  const reopenHeroCropper = async (slideId, slide) => {
+    try {
+      const source = slide.image
+      const image = slide.image_width && slide.image_height
+        ? {
+            source,
+            imageWidth: slide.image_width,
+            imageHeight: slide.image_height,
+          }
+        : await readCropSource(source)
+
+      if (!image.source || !image.imageWidth || !image.imageHeight) {
+        showNotice('No se pudo reabrir la imagen para recortar.', 'error')
         return
       }
 
-      setHeroSlides((prev) => prev.map((slide) => (
-        slide.id === slideId ? { ...slide, image: image.url } : slide
-      )))
+      setHeroCropper({
+        targetId: slideId,
+        source: image.source,
+        imageWidth: image.imageWidth,
+        imageHeight: image.imageHeight,
+        zoom: 1,
+        focusX: Number(slide.crop_focus_x ?? 0.5),
+        focusY: Number(slide.crop_focus_y ?? 0.5),
+        isDragging: false,
+      })
+    } catch (error) {
+      showNotice(error.message, 'error')
+    }
+  }
+
+  const updateHeroCropper = (updates) => {
+    setHeroCropper((current) => {
+      if (!current) return current
+      return clampHeroCrop({ ...current, ...updates })
+    })
+  }
+
+  const onHeroCropPointerDown = (event) => {
+    if (!heroCropper) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    heroCropDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      focusX: heroCropper.focusX,
+      focusY: heroCropper.focusY,
+      zoom: heroCropper.zoom,
+      imageWidth: heroCropper.imageWidth,
+      imageHeight: heroCropper.imageHeight,
+    }
+    setHeroCropper((current) => current ? { ...current, isDragging: true } : current)
+  }
+
+  const onHeroCropPointerMove = (event) => {
+    const drag = heroCropDragRef.current
+    if (!drag) return
+    event.preventDefault()
+    const frame = event.currentTarget.getBoundingClientRect()
+    const bounds = cropBounds(drag.imageWidth, drag.imageHeight, drag.zoom)
+    const horizontalRange = bounds.maxFocusX - bounds.minFocusX
+    const verticalRange = bounds.maxFocusY - bounds.minFocusY
+    const deltaX = (event.clientX - drag.startX) / frame.width
+    const deltaY = (event.clientY - drag.startY) / frame.height
+    const nextFocusX = drag.focusX - (deltaX * horizontalRange)
+    const nextFocusY = drag.focusY - (deltaY * verticalRange)
+
+    updateHeroCropper({ focusX: nextFocusX, focusY: nextFocusY })
+  }
+
+  const onHeroCropPointerUp = (event) => {
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+    heroCropDragRef.current = null
+    setHeroCropper((current) => current ? { ...current, isDragging: false } : current)
+  }
+
+  const applyHeroCrop = async () => {
+    if (!heroCropper) return
+
+    try {
+      const targetId = heroCropper.targetId
+      const crop = clampHeroCrop(heroCropper)
+      const cropData = {
+        image: crop.source,
+        image_width: crop.imageWidth,
+        image_height: crop.imageHeight,
+        crop_focus_x: crop.focusX,
+        crop_focus_y: crop.focusY,
+        crop_zoom: crop.zoom,
+      }
+
+      if (heroCropper.targetId === 'new') {
+        setNewHeroSlide((prev) => ({
+          ...prev,
+          ...cropData,
+        }))
+      } else {
+        setHeroSlides((prev) => prev.map((slide) => (
+          slide.id === heroCropper.targetId
+            ? {
+                ...slide,
+                ...cropData,
+              }
+            : slide
+        )))
+      }
+
+      setHeroCropper(null)
+      centerHeroSlideEditor(targetId)
     } catch (error) {
       showNotice(error.message, 'error')
     }
@@ -253,7 +559,7 @@ export default function AdminDashboardPage() {
       const allowed = await ensureAuth()
       if (!allowed || !mounted) return
       try {
-        await Promise.all([loadSummary(), loadProducts(), loadOrders(), loadHeroSlides()])
+        await Promise.all([loadSummary(), loadProducts(), loadOrders(), loadHeroSlides(), loadHeroProductOptions()])
       } catch (error) {
         if (mounted) showNotice(readApiError(error), 'error')
       }
@@ -370,15 +676,6 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const heroSlidePayload = (slide) => ({
-    eyebrow: slide.eyebrow,
-    title: slide.title,
-    cta: slide.cta,
-    image: slide.image,
-    sort_order: Number(slide.sort_order || 0),
-    is_active: Boolean(slide.is_active),
-  })
-
   const onCreateHeroSlide = async (event) => {
     event.preventDefault()
     try {
@@ -419,6 +716,10 @@ export default function AdminDashboardPage() {
       setRemovingHeroSlideId('')
     }
   }
+
+  const hasHeroSlideChanges = (slide) => (
+    heroSlideBaselines[slide.id] !== serializeHeroSlide(slide)
+  )
 
   const removeProductImage = async (productId, indexToRemove) => {
     const product = products.find((item) => item.id === productId)
@@ -765,10 +1066,15 @@ export default function AdminDashboardPage() {
               <h3>Carrusel principal</h3>
             </div>
 
-            <form className="carousel-admin-card carousel-admin-card--new" onSubmit={onCreateHeroSlide}>
+            <form className="carousel-admin-card carousel-admin-card--new" data-hero-slide-id="new" onSubmit={onCreateHeroSlide}>
               <div className="carousel-slide-preview">
                 {newHeroSlide.image ? (
-                  <img src={newHeroSlide.image} alt={newHeroSlide.title || 'Nuevo slide'} />
+                  <img
+                    src={newHeroSlide.image}
+                    alt={newHeroSlide.title || 'Nuevo slide'}
+                    className={heroImageStyle(newHeroSlide) ? 'is-cropped' : ''}
+                    style={heroImageStyle(newHeroSlide) || undefined}
+                  />
                 ) : (
                   <span>Foto</span>
                 )}
@@ -787,6 +1093,14 @@ export default function AdminDashboardPage() {
                   <AdminField label="Orden">
                     <input type="number" min="0" value={newHeroSlide.sort_order} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, sort_order: e.target.value }))} />
                   </AdminField>
+                  <AdminField label="Articulo ligado">
+                    <select value={newHeroSlide.product_id || ''} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, product_id: e.target.value }))}>
+                      <option value="">Sin articulo</option>
+                      {heroProductOptions.map((product) => (
+                        <option value={product.id} key={product.id}>{product.name}</option>
+                      ))}
+                    </select>
+                  </AdminField>
                 </div>
                 <div className="card-actions">
                   <label className="btn-alt file-btn">
@@ -795,26 +1109,36 @@ export default function AdminDashboardPage() {
                       type="file"
                       accept="image/*"
                       onChange={async (e) => {
-                        await setHeroSlideImage('new', e.target.files)
+                        await openHeroCropper('new', e.target.files)
                         e.target.value = ''
                       }}
                     />
                   </label>
+                  {newHeroSlide.image && (
+                    <button type="button" className="btn-alt" onClick={() => reopenHeroCropper('new', newHeroSlide)}>
+                      Recortar de nuevo
+                    </button>
+                  )}
                   <label className="method compact-method">
                     <input type="checkbox" checked={Boolean(newHeroSlide.is_active)} onChange={(e) => setNewHeroSlide((prev) => ({ ...prev, is_active: e.target.checked }))} />
                     Publicado
                   </label>
-                  <button type="submit">Agregar slide</button>
+                  <button type="submit">Agregar al carrusel</button>
                 </div>
               </div>
             </form>
 
             <div className="carousel-admin-list">
               {heroSlides.map((slide) => (
-                <article className={`carousel-admin-card ${removingHeroSlideId === slide.id ? 'is-removing' : ''}`} key={slide.id}>
+                <article className={`carousel-admin-card ${removingHeroSlideId === slide.id ? 'is-removing' : ''}`} data-hero-slide-id={slide.id} key={slide.id}>
                   <div className="carousel-slide-preview">
                     {slide.image ? (
-                      <img src={slide.image} alt={slide.title} />
+                      <img
+                        src={slide.image}
+                        alt={slide.title}
+                        className={heroImageStyle(slide) ? 'is-cropped' : ''}
+                        style={heroImageStyle(slide) || undefined}
+                      />
                     ) : (
                       <span>Foto</span>
                     )}
@@ -833,6 +1157,14 @@ export default function AdminDashboardPage() {
                       <AdminField label="Orden">
                         <input type="number" min="0" value={slide.sort_order ?? 0} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, sort_order: e.target.value } : item))} />
                       </AdminField>
+                      <AdminField label="Articulo ligado">
+                        <select value={slide.product_id || ''} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, product_id: e.target.value } : item))}>
+                          <option value="">Sin articulo</option>
+                          {heroProductOptions.map((product) => (
+                            <option value={product.id} key={product.id}>{product.name}</option>
+                          ))}
+                        </select>
+                      </AdminField>
                     </div>
                     <div className="card-actions">
                       <label className="btn-alt file-btn">
@@ -841,16 +1173,23 @@ export default function AdminDashboardPage() {
                           type="file"
                           accept="image/*"
                           onChange={async (e) => {
-                            await setHeroSlideImage(slide.id, e.target.files)
+                            await openHeroCropper(slide.id, e.target.files)
                             e.target.value = ''
                           }}
                         />
                       </label>
+                      {slide.image && (
+                        <button type="button" className="btn-alt" onClick={() => reopenHeroCropper(slide.id, slide)}>
+                          Recortar de nuevo
+                        </button>
+                      )}
                       <label className="method compact-method">
                         <input type="checkbox" checked={Boolean(slide.is_active)} onChange={(e) => setHeroSlides((prev) => prev.map((item) => item.id === slide.id ? { ...item, is_active: e.target.checked } : item))} />
                         Publicado
                       </label>
-                      <button type="button" onClick={() => onUpdateHeroSlide(slide)}>Guardar cambios</button>
+                      {hasHeroSlideChanges(slide) && (
+                        <button type="button" onClick={() => onUpdateHeroSlide(slide)}>Guardar cambios</button>
+                      )}
                       <button type="button" className="btn-danger" onClick={() => onDeleteHeroSlide(slide.id)}>Eliminar</button>
                     </div>
                   </div>
@@ -1135,6 +1474,58 @@ export default function AdminDashboardPage() {
                 <button type="button" className="btn-alt" onClick={() => setShowCreateModal(false)}>Cancelar</button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {heroCropper && (
+        <div className="modal-overlay hero-crop-overlay" role="dialog" aria-modal="true" onClick={() => setHeroCropper(null)}>
+          <section className="modal-card hero-cropper-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Recortar foto del carrusel</h3>
+            <div className="hero-crop-layout">
+              <div className="hero-crop-workspace">
+                <div
+                  className={`hero-crop-frame ${heroCropper.isDragging ? 'is-dragging' : ''}`}
+                  onPointerDown={onHeroCropPointerDown}
+                  onPointerMove={onHeroCropPointerMove}
+                  onPointerUp={onHeroCropPointerUp}
+                  onPointerCancel={onHeroCropPointerUp}
+                >
+                  {(() => {
+                    const bounds = cropBounds(heroCropper.imageWidth, heroCropper.imageHeight, heroCropper.zoom)
+                    return (
+                      <img
+                        src={heroCropper.source}
+                        alt="Recorte del carrusel"
+                        draggable="false"
+                        style={{
+                          width: `${bounds.widthPercent}%`,
+                          height: `${bounds.heightPercent}%`,
+                          left: `${50 - (heroCropper.focusX * bounds.widthPercent)}%`,
+                          top: `${50 - (heroCropper.focusY * bounds.heightPercent)}%`,
+                        }}
+                      />
+                    )
+                  })()}
+                  <div className="hero-crop-guides" aria-hidden="true" />
+                </div>
+              </div>
+              <div className="hero-crop-overview" aria-hidden="true">
+                <div
+                  className="hero-crop-overview-canvas"
+                  style={{ aspectRatio: `${heroCropper.imageWidth} / ${heroCropper.imageHeight}` }}
+                >
+                  <img src={heroCropper.source} alt="" draggable="false" />
+                  <span className="hero-crop-selection" style={cropSelection(heroCropper)} />
+                </div>
+              </div>
+            </div>
+            <div className="hero-crop-controls">
+              <div className="hero-crop-actions">
+                <button type="button" onClick={applyHeroCrop}>Usar recorte</button>
+                <button type="button" className="btn-alt" onClick={() => setHeroCropper(null)}>Cancelar</button>
+              </div>
+            </div>
           </section>
         </div>
       )}
