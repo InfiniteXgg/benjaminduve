@@ -67,6 +67,57 @@ class AdminApiController extends Controller
         ]);
     }
 
+    public function updateAccount(Request $request): JsonResponse
+    {
+        $user = $this->requireAdmin($request);
+        if (!$user) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $data = $request->validate([
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'current_password' => ['required', 'string'],
+            'password' => ['nullable', 'string', 'min:6', 'confirmed'],
+        ], [
+            'email.email' => 'Ingresa un correo valido.',
+            'email.unique' => 'Ese correo ya esta siendo utilizado.',
+            'current_password.required' => 'Ingresa tu contrasena actual.',
+            'password.min' => 'La nueva contrasena debe tener al menos 6 caracteres.',
+            'password.confirmed' => 'La confirmacion de contrasena no coincide.',
+        ]);
+
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'La contrasena actual no coincide.',
+            ], 422);
+        }
+
+        $updates = [];
+        $email = trim((string) ($data['email'] ?? ''));
+        if ($email !== '' && $email !== $user->email) {
+            $updates['email'] = $email;
+        }
+
+        $password = (string) ($data['password'] ?? '');
+        if ($password !== '') {
+            $updates['password'] = $password;
+        }
+
+        if ($updates === []) {
+            return response()->json([
+                'message' => 'No se hicieron cambios en la cuenta.',
+                'user' => $this->userPayload($user),
+            ]);
+        }
+
+        $user->update($updates);
+
+        return response()->json([
+            'message' => 'Cuenta actualizada correctamente.',
+            'user' => $this->userPayload($user->fresh()),
+        ]);
+    }
+
     public function summary(Request $request): JsonResponse
     {
         if (!$this->requireAdmin($request)) {

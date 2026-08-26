@@ -2077,3 +2077,32 @@ outes/api.php):
 - Validacion:
   - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
   - `docker compose exec -T frontend npm run build` OK.
+
+### 2026-08-26 - Hotfix busqueda sin desmontar carrusel
+- Problema detectado:
+  - tras ocultar el carrusel durante busqueda aparecio el error runtime `Cannot read properties of null (reading 'useState')`.
+- Implementacion:
+  - `HomePage.jsx` mantiene `HeroCarousel` montado y lo oculta con un wrapper CSS cuando hay busqueda activa, evitando montar/desmontar el componente durante el debounce de busqueda.
+  - `styles.css` e `index.css` agregan `.hero-carousel-search-hidden { display: none; }`.
+- Validacion:
+  - `docker compose exec -T frontend npm ls react react-dom` OK: React deduplicado.
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+  - `docker compose restart frontend` OK; Vite responde en `http://localhost:5173/`.
+
+### 2026-08-26 - Cuenta administrativa editable desde dashboard
+- Solicitud del usuario:
+  - agregar un boton en el panel de administrador para cambiar la contrasena desde una sesion iniciada.
+- Implementacion:
+  - `routes/api.php` agrega `PUT /api/admin/account` protegido por `auth:sanctum`.
+  - `AdminApiController::updateAccount` permite actualizar correo y/o contrasena solo si la contrasena actual es correcta; valida email unico y confirmacion de nueva contrasena.
+  - `adminApi.js` agrega `updateAccount`.
+  - `AdminHeader.jsx` agrega el boton `Cuenta`.
+  - `AdminDashboardPage.jsx` agrega modal de cuenta administrativa con correo, contrasena actual, nueva contrasena opcional y confirmacion.
+  - `index.css` y `public/styles.css` agregan ajustes de cabecera y modal de cuenta.
+- Validacion:
+  - `tests/Feature/AdminAccountTest.php` cubre cambio de email/contrasena y rechazo por contrasena actual incorrecta.
+  - `docker compose exec -T app php artisan test` OK: 6 tests pasan.
+  - `docker compose exec -T frontend npm run lint` OK con 2 warnings preexistentes de hooks (`AdminDashboardPage.jsx`, `HomePage.jsx`).
+  - `docker compose exec -T frontend npm run build` OK.
+  - `docker compose restart frontend` OK.

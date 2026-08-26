@@ -35,6 +35,13 @@ const EMPTY_HERO_SLIDE = {
   is_active: true,
 }
 
+const EMPTY_ACCOUNT_FORM = {
+  email: '',
+  current_password: '',
+  password: '',
+  password_confirmation: '',
+}
+
 const HERO_CROP_WIDTH = 1600
 const HERO_CROP_HEIGHT = 900
 
@@ -281,11 +288,25 @@ function centerHeroSlideEditor(slideId) {
   })
 }
 
+function storedAdminUser() {
+  try {
+    return JSON.parse(localStorage.getItem('admin_user') || '{}')
+  } catch {
+    return {}
+  }
+}
+
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState('products')
   const [notice, setNotice] = useState('')
   const [noticeTone, setNoticeTone] = useState('info')
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
+  const [accountForm, setAccountForm] = useState(() => ({
+    ...EMPTY_ACCOUNT_FORM,
+    email: storedAdminUser().email || '',
+  }))
+  const [accountBusy, setAccountBusy] = useState(false)
   const [summary, setSummary] = useState({
     product_count: 0,
     active_product_count: 0,
@@ -613,6 +634,39 @@ export default function AdminDashboardPage() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [showCreateModal])
 
+  const onUpdateAccount = async (event) => {
+    event.preventDefault()
+
+    if (accountForm.password && accountForm.password !== accountForm.password_confirmation) {
+      showNotice('La confirmacion de contrasena no coincide.', 'error')
+      return
+    }
+
+    setAccountBusy(true)
+    try {
+      const payload = {
+        email: accountForm.email.trim(),
+        current_password: accountForm.current_password,
+        password: accountForm.password || null,
+        password_confirmation: accountForm.password_confirmation || null,
+      }
+      const response = await adminApi.updateAccount(payload)
+      if (response.user) {
+        localStorage.setItem('admin_user', JSON.stringify(response.user))
+        setAccountForm({
+          ...EMPTY_ACCOUNT_FORM,
+          email: response.user.email || '',
+        })
+      }
+      setShowAccountSettings(false)
+      showNotice(response.message || 'Cuenta actualizada correctamente.')
+    } catch (error) {
+      showNotice(readApiError(error), 'error')
+    } finally {
+      setAccountBusy(false)
+    }
+  }
+
   const onLogout = async () => {
     try {
       await adminApi.logout()
@@ -836,6 +890,13 @@ export default function AdminDashboardPage() {
         tab={tab}
         onChangeTab={setTab}
         onLogout={onLogout}
+        onOpenAccountSettings={() => {
+          setAccountForm({
+            ...EMPTY_ACCOUNT_FORM,
+            email: storedAdminUser().email || accountForm.email || '',
+          })
+          setShowAccountSettings(true)
+        }}
         lowStockProducts={summary.low_stock_products || []}
         lowStockThreshold={summary.low_stock_threshold || 5}
       />
@@ -1311,6 +1372,66 @@ export default function AdminDashboardPage() {
           </section>
         )}
       </main>
+
+      {showAccountSettings && (
+        <div className="modal-overlay admin-create-overlay" role="dialog" aria-modal="true" onClick={() => setShowAccountSettings(false)}>
+          <section className="modal-card admin-account-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Cuenta administrativa</h3>
+            <form className="stack" onSubmit={onUpdateAccount}>
+              <AdminField label="Correo de acceso">
+                <input
+                  type="email"
+                  value={accountForm.email}
+                  onChange={(e) => setAccountForm((prev) => ({ ...prev, email: e.target.value }))}
+                  required
+                />
+              </AdminField>
+              <AdminField label="Contrasena actual">
+                <input
+                  type="password"
+                  value={accountForm.current_password}
+                  onChange={(e) => setAccountForm((prev) => ({ ...prev, current_password: e.target.value }))}
+                  autoComplete="current-password"
+                  required
+                />
+              </AdminField>
+              <div className="admin-form-grid admin-account-password-grid">
+                <AdminField label="Nueva contrasena">
+                  <input
+                    type="password"
+                    value={accountForm.password}
+                    onChange={(e) => setAccountForm((prev) => ({ ...prev, password: e.target.value }))}
+                    autoComplete="new-password"
+                    minLength={6}
+                    placeholder="Opcional"
+                  />
+                </AdminField>
+                <AdminField label="Confirmar nueva contrasena">
+                  <input
+                    type="password"
+                    value={accountForm.password_confirmation}
+                    onChange={(e) => setAccountForm((prev) => ({ ...prev, password_confirmation: e.target.value }))}
+                    autoComplete="new-password"
+                    minLength={accountForm.password ? 6 : undefined}
+                    placeholder="Opcional"
+                  />
+                </AdminField>
+              </div>
+              <p className="muted">
+                Para cambiar solo el correo, deja vacia la nueva contrasena.
+              </p>
+              <div className="card-actions">
+                <button type="submit" disabled={accountBusy}>
+                  {accountBusy ? 'Guardando...' : 'Guardar cuenta'}
+                </button>
+                <button type="button" className="btn-alt" onClick={() => setShowAccountSettings(false)} disabled={accountBusy}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       {tab === 'orders' && selectedOrder && (
         <div className="modal-overlay admin-create-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedOrder(null)}>

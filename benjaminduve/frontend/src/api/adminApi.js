@@ -16,6 +16,11 @@ export const adminApi = {
     return data
   },
 
+  async updateAccount(payload) {
+    const { data } = await api.put('/admin/account', payload)
+    return data
+  },
+
   async summary() {
     const { data } = await api.get('/admin/summary')
     return data
