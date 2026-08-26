@@ -21,6 +21,7 @@ Route::prefix('admin')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AdminApiController::class, 'me']);
+        Route::put('/account', [AdminApiController::class, 'updateAccount']);
         Route::post('/logout', [AdminApiController::class, 'logout']);
         Route::get('/summary', [AdminApiController::class, 'summary']);
 

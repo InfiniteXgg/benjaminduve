@@ -47,6 +47,7 @@ a { color: inherit; }
 button, input, textarea { font: inherit; }
 
 .app-shell { min-height: 100vh; }
+.hero-carousel-search-hidden { display: none; }
 .route-transition {
   animation: route-fade-in .24s ease both;
 }
@@ -132,6 +133,7 @@ input.is-invalid { border-color: #c62828; box-shadow: 0 0 0 2px rgba(198, 40, 40
 .brand-actions { display: inline-flex; align-items: center; gap: 8px; }
 .header-nav, .admin-brand-block { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .admin-brand-text { font-size: 14px; font-weight: 600; margin-right: 4px; }
+.header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 
 .nav-btn {
   border: none;
@@ -1237,6 +1239,12 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .admin-create-card {
   width: min(980px, 96vw);
   max-height: min(88vh, 820px);
+}
+.admin-account-card {
+  width: min(560px, 96vw);
+}
+.admin-account-password-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .orders-compact { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface-soft); }
 .orders-head { display: grid; grid-template-columns: 70px 1.6fr 1fr 1fr 120px 1.4fr; gap: 8px; padding: 8px 10px; font-size: 12px; font-weight: 700; border-bottom: 1px solid var(--border); background: var(--surface); }

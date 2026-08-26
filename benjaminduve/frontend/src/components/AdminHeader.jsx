@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import BrandLogo from './BrandLogo'
 import ThemeToggle from './ThemeToggle'
 
-export default function AdminHeader({ tab, onChangeTab, onLogout, lowStockProducts = [], lowStockThreshold = 5 }) {
+export default function AdminHeader({ tab, onChangeTab, onLogout, onOpenAccountSettings, lowStockProducts = [], lowStockThreshold = 5 }) {
   const [bellOpen, setBellOpen] = useState(false)
   const dropdownRef = useRef(null)
   const alertCount = lowStockProducts.length
@@ -80,6 +80,7 @@ export default function AdminHeader({ tab, onChangeTab, onLogout, lowStockProduc
               </div>
             )}
           </div>
+          <button className="nav-btn" onClick={onOpenAccountSettings}>Cuenta</button>
           <button className="nav-btn" onClick={onLogout}>Cerrar sesion</button>
         </div>
       </div>

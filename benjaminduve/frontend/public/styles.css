@@ -63,6 +63,7 @@ a { color: inherit; }
 button, input, textarea { font: inherit; }
 
 .app-shell { min-height: 100vh; }
+.hero-carousel-search-hidden { display: none; }
 .route-transition {
   animation: route-fade-in .24s ease both;
 }
@@ -119,7 +120,7 @@ button, input, textarea { font: inherit; }
 /* Header & nav styles moved to index.css (Vite) */
 .admin-brand-text { font-size: 14px; font-weight: 600; margin-right: 4px; }
 
-.header-actions { display: flex; align-items: center; gap: 10px; }
+.header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .bell-container { position: relative; }
 .bell-btn.has-alerts { border-color: #f59e0b; }
 .bell-badge {
@@ -1002,6 +1003,12 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .admin-create-card {
   width: min(980px, 96vw);
   max-height: min(88vh, 820px);
+}
+.admin-account-card {
+  width: min(560px, 96vw);
+}
+.admin-account-password-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .waiting-overlay { z-index: 55; }
 .waiting-card {

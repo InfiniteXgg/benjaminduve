@@ -384,7 +384,9 @@ export default function HomePage() {
         </div>,
         document.body
       )}
-      {!isSearchActive && <HeroCarousel onProductClick={openProductModal} />}
+      <div className={isSearchActive ? 'hero-carousel-search-hidden' : ''}>
+        <HeroCarousel onProductClick={openProductModal} />
+      </div>
       <main id="catalogo" ref={catalogSectionRef} className={`container ${isSearchActive ? 'container--searching' : ''}`}>
         <NoticeBanner message={notice} tone={noticeTone} />
 
